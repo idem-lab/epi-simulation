@@ -1,0 +1,48 @@
+#' to_tidy
+#' @title Convert simulation output to a tidy long table
+#' @description
+#' Harmonizes different sim outputs into a single long format with columns:
+#' `time, group, sim, state (S/I/R/incidence), value`.
+#' @param sim A simulation output (deterministic single-pop, stochastic multi-run, or multi-pop).
+#' @return data.frame in long (tidy) format.
+#' @examples
+#' # df <- to_tidy(sim); head(df)
+to_tidy <- function(sim) {
+  pack <- function(t, g, s, S, I, R, inc) {
+    rbind(
+      data.frame(time = t, group = g, sim = s, state = "S", value = S),
+      data.frame(time = t, group = g, sim = s, state = "I", value = I),
+      data.frame(time = t, group = g, sim = s, state = "R", value = R),
+      data.frame(time = t, group = g, sim = s, state = "incidence", value = inc)
+    )
+  }
+  
+  # Deterministic single-pop (vectors S/I/R)
+  if (!is.null(sim$S) && is.vector(sim$S) && is.null(sim$proportions)) {
+    return(pack(sim$time, 1, 1, sim$S, sim$I, sim$R, sim$incidence))
+  }
+  
+  # Stochastic multi-run (array proportions[time, sim, ])
+  if (!is.null(sim$proportions)) {
+    M <- dim(sim$proportions)[2]
+    out <- lapply(seq_len(M), function(j) {
+      pack(sim$time, 1, j,
+           S   = sim$proportions[, j, "S"],
+           I   = sim$proportions[, j, "I"],
+           R   = sim$proportions[, j, "R"],
+           inc = sim$cases[, j])
+    })
+    return(do.call(rbind, out))
+  }
+  
+  # Multi-pop deterministic (matrices S/I/R/incidence)
+  if (is.matrix(sim$S) && is.matrix(sim$incidence)) {
+    G <- ncol(sim$S)
+    out <- lapply(seq_len(G), function(g) {
+      pack(sim$time, g, 1, sim$S[, g], sim$I[, g], sim$R[, g], sim$incidence[, g])
+    })
+    return(do.call(rbind, out))
+  }
+  
+  stop("Unrecognized sim structure for to_tidy().")
+}
