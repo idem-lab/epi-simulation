@@ -50,7 +50,7 @@
 #   A) Deterministic (constant beta)
 #   B) Deterministic (seasonal beta)
 #   C) Stochastic (seasonal beta) + per-sim summary
-#   D) Sanity check (fixed beta, mean ≈ deterministic)
+#   D) Sanity check (removed , seperate file)
 #   E) Multi-pop deterministic
 #   F) Multi-pop stochastic (mean + ribbons)
 
@@ -76,7 +76,7 @@ seed     <- 42
 
 # Multi-pop (E, F)
 mp_n_times <- 365
-mp_pops    <- c(100000, 50000, 20000)
+mp_pops    <- c(100000, 500, 2000)
 mp_Iinit   <- c(10, 5, 0)
 mp_beta    <- 0.20       # scalar; recycled to [time x pops]
 mp_gamma   <- 1/7
@@ -147,27 +147,6 @@ plot_sir_diag(list(
 ), which = "both_side")
 # headline summaries (first few sims)
 print(utils::head(summarize_sim(stoch_C), 5))
-
-# D) Sanity check (fixed beta, epsilon = 0): mean(stoch) ≈ deterministic
-cat("\n[D] Sanity check (fixed beta, epsilon=0)\n")
-det_D <- simulate_sirs(
-  n_times = n_times, pop = pop, I_init = I_init,
-  beta = beta, gamma = gamma, omega = omega,
-  epsilon = 0, alpha = NULL, n_sims = 1, stochastic = FALSE
-)
-stoch_D <- simulate_sirs(
-  n_times = n_times, pop = pop, I_init = I_init,
-  beta = beta, gamma = gamma, omega = omega,
-  epsilon = 0, alpha = NULL, n_sims = 1000, stochastic = TRUE, seed = seed
-)
-I_mean <- rowMeans(stoch_D$proportions[, , "I"])
-I_det  <- det_D$proportions[, 1, "I"]
-plot(stoch_D$time, I_mean, type = "l", lwd = 2,
-     main = "Sanity check: Stochastic mean vs Deterministic",
-     ylab = "I proportion", xlab = "day")
-lines(stoch_D$time, I_det, col = "red", lty = 2, lwd = 2)
-legend("topright", c("Stochastic mean", "Deterministic"),
-       col = c("black", "red"), lty = c(1, 2), lwd = 2)
 
 # E) Multi-pop deterministic
 cat("\n[E] Multi-pop deterministic\n")
