@@ -102,6 +102,7 @@ source("make_beta.R")
 source("plot_sir_diag.R")
 source("plot_multi.R")                 
 source("summarize_sim.R")
+source("plot_dashboard.R")
 
 # ---- 3) RUN DEMO ----
 
@@ -178,3 +179,23 @@ sim_F <- simulate_sirs_multi_stoch(
 plot_multi_stoch_I(sim_F, probs = mp_ribbon)
 # ribbons for daily incidence per population (per million)
 plot_multi_stoch_incidence(sim_F, per_million = TRUE, probs = mp_ribbon)
+
+
+# ----DASHBOARDS ----
+# Deterministic dashboard
+plot_dashboard(sim_E, probs = c(0.05, 0.95), per_million = TRUE,
+                        main = "Multi-pop deterministic")
+
+# Stochastic dashboard
+plot_dashboard(sim_F, probs = mp_ribbon, per_million = TRUE,
+                        main = "Multi-pop stochastic")
+
+
+plot_dashboard_v2(sim_E, probs = c(0.05, 0.95), per_million = TRUE,
+                           main = "Multi-pop deterministic")
+
+
+plot_dashboard_v2(sim_F, probs = mp_ribbon, per_million = TRUE,
+                           main = "Multi-pop stochastic")
+
+
