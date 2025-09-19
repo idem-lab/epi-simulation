@@ -184,18 +184,16 @@ plot_multi_stoch_incidence(sim_F, per_million = TRUE, probs = mp_ribbon)
 # ----DASHBOARDS ----
 # Deterministic dashboard
 plot_dashboard(sim_E, probs = c(0.05, 0.95), per_million = TRUE,
-                        main = "Multi-pop deterministic")
+               main = "Multi-pop deterministic")
 
 # Stochastic dashboard
 plot_dashboard(sim_F, probs = mp_ribbon, per_million = TRUE,
-                        main = "Multi-pop stochastic")
+               main = "Multi-pop stochastic")
 
 
 plot_dashboard_v2(sim_E, probs = c(0.05, 0.95), per_million = TRUE,
-                           main = "Multi-pop deterministic")
+                  main = "Multi-pop deterministic")
 
 
 plot_dashboard_v2(sim_F, probs = mp_ribbon, per_million = TRUE,
-                           main = "Multi-pop stochastic")
-
-
+                  main = "Multi-pop stochastic")
