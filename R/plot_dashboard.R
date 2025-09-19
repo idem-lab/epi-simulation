@@ -2,7 +2,7 @@
 # 6 plot version
 # =========================================
 plot_dashboard <- function(sim, probs = c(0.05, 0.95), per_million = FALSE,
-                                    main = "Multi-pop dashboard") {
+                           main = "Multi-pop dashboard") {
   stopifnot(!is.null(sim$time))
   # helpers
   qfun <- function(x, p) stats::quantile(x, probs = p, na.rm = TRUE, names = FALSE)
@@ -121,7 +121,7 @@ plot_dashboard <- function(sim, probs = c(0.05, 0.95), per_million = FALSE,
 # 9 plots version
 # =========================================
 plot_dashboard_v2 <- function(sim, probs = c(0.05, 0.95), per_million = FALSE,
-                                       main = "Multi-pop dashboard") {
+                              main = "Multi-pop dashboard") {
   stopifnot(!is.null(sim$time))
   qfun <- function(x, p) stats::quantile(x, probs = p, na.rm = TRUE, names = FALSE)
   
