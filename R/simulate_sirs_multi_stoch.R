@@ -1,3 +1,53 @@
+#' @title Stochastic multi-population SIRS simulator
+#' 
+#' @description
+#' Simulate a stochastic SIRS model across \eqn{P} subpopulations for `n_times`
+#' days. States are tracked as **counts** per simulation (S/I/R), with optional
+#' reporting noise for cases. Transmission can vary by time and group via
+#' `beta_mat`, and cross-group mixing is controlled by a contact matrix `C`.
+#'
+#' @param n_times Integer (\eqn{\ge} 2). Number of days.
+#' @param pop_vec Numeric vector (length `P`, all \eqn{>} 0). Population sizes.
+#' @param I_init Numeric/integer vector (length `P`, each in \[0, `pop_vec[p]`]).
+#'   Initial infected **counts** per group.
+#' @param beta_mat Numeric scalar, vector (`n_times`), or matrix (`[n_times x P]`)
+#'   giving transmission rates.
+#' @param gamma Numeric in \[0,1]. Daily recovery probability.
+#' @param omega Numeric in \[0,1]. Daily waning probability (R→S).
+#' @param C Numeric matrix `[P x P]`. Contact/mixing weights with rows as receivers
+#'   and columns as sources (`C[g,h]` weights infections from `h` to `g`). If `NULL`,
+#'   uses a matrix of ones.
+#' @param epsilon Numeric scalar or length-`P` vector (\eqn{\ge} 0). Exogenous
+#'   infection pressure added to the hazard.
+#' @param alpha `NULL`, scalar, or length-`P` vector in \[0,1]. Reporting probability
+#'   used to thin incident infections into observed `cases`.
+#' @param n_sims Integer (\eqn{\ge} 1). Number of independent simulation paths.
+#' @param stochastic Logical. If `TRUE` (default) use binomial draws; otherwise
+#'   use rounded expectations.
+#' @param seed Optional integer. RNG seed for reproducibility.
+#'
+#' @return A list with components:
+#' \describe{
+#'   \item{time}{Integer vector `1:n_times`.}
+#'   \item{proportions}{Numeric array `[time x sims x P x state]` with `"S"`, `"I"`, `"R"`.}
+#'   \item{cases}{Integer array `[time x sims x P]` (daily observed cases).}
+#'   \item{params}{List of inputs used (`beta`, `C`, `epsilon`, `alpha`, etc.).}
+#' }
+#'
+#' @examples
+#' # Two groups, 50 sims, seasonal beta in group 1, constant in group 2
+#' # b1 <- make_beta(120, "seasonal", base = 0.18, amplitude = 0.25, phase = 30)
+#' # b2 <- make_beta(120, "constant", value = 0.16)
+#' # B  <- cbind(b1, b2)
+#' # Cw <- make_contact(P = 2, within = 0.85)
+#' # out <- simulate_sirs_multi_stoch(
+#' #   n_times = 120, pop_vec = c(8e4, 6e4), I_init = c(8, 6),
+#' #   beta_mat = B, gamma = 1/7, omega = 1/60, C = Cw,
+#' #   epsilon = 1e-4, alpha = c(0.6, 0.6), n_sims = 50, seed = 42
+#' # )
+#'
+#' @importFrom stats rbinom
+#' @export
 simulate_sirs_multi_stoch <- function(
     n_times   = 365,
     pop_vec   = c(5e4, 5e4),

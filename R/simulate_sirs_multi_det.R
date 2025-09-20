@@ -1,3 +1,43 @@
+#' @title Deterministic multi-population SIRS simulator
+#' @description
+#' Simulate a deterministic SIRS model across \eqn{P} subpopulations over
+#' `n_times` discrete steps. Returns S, I, R **proportions** and daily
+#' **incidence (counts)** per group. Transmission can vary over time and/or
+#' by group, and mixing is controlled by a contact matrix `C`.
+#'
+#' @param n_times Integer (\eqn{\ge} 2). Number of time steps (days).
+#' @param pop_vec Numeric vector (length `P`, all \eqn{>} 0). Population sizes per group.
+#' @param I_init Numeric/integer vector (length `P`, each in \[0, `pop_vec[p]`]).
+#'   Initial infected **counts** per group.
+#' @param beta_mat Numeric scalar, vector (`n_times`), or matrix (`[n_times x P]`)
+#'   giving transmission rates.
+#' @param gamma Numeric in \[0,1]. Recovery rate per day (common across groups).
+#' @param omega Numeric in \[0,1]. Waning rate per day from R to S (common).
+#' @param C Optional numeric matrix `[P x P]`. Contact/mixing weights with `C[g,h]`
+#'   weighting infectious pressure from group `h` to `g`.
+#' @param seed Optional integer. If supplied, sets the RNG seed (useful if `beta_mat`
+#'   was generated stochastically upstream; this function itself is deterministic).
+#'
+#' @examples
+#' # Two groups, constant beta, simple equal mixing
+#' out <- simulate_sirs_multi(
+#'   n_times = 90,
+#'   pop_vec = c(5e4, 5e4),
+#'   I_init  = c(10, 10),
+#'   beta_mat = 0.16,
+#'   gamma = 1/7, omega = 1/30,
+#'   C = matrix(1, 2, 2)
+#' )
+#' str(out$S); str(out$incidence)
+#'
+#' # Time-varying, group-specific beta with within/between mixing
+#' # b1 <- make_beta(120, mode = "seasonal", base = 0.18, amplitude = 0.25, phase = 30)
+#' # b2 <- make_beta(120, mode = "constant", value = 0.16)
+#' # B  <- cbind(b1, b2)  # [n_times x P]
+#' # Cw <- make_contact(P = 2, within = 0.8)
+#' # out2 <- simulate_sirs_multi(120, c(8e4, 6e4), c(8, 6), B, 1/7, 1/60, Cw)
+#'
+#' @export
 simulate_sirs_multi <- function(
     n_times   = 365,                 # number of time steps (e.g., days)
     pop_vec   = c(50000, 50000),     # population sizes per group (length = P)

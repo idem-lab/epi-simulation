@@ -1,3 +1,27 @@
+#' @title Construct a time-varying transmission rate beta_t
+#' 
+#' @description
+#' Returns a length-`n_times` vector of daily transmission rates \eqn{\beta_t}
+#' for SIR/SIRS-style simulations. Supports a constant rate or a seasonal
+#' cosine pattern over a 365-day period.
+#'
+#' @param n_times Integer. Total simulation length (days).
+#' @param mode Character. One of `"constant"` or `"seasonal"`.
+#' @param value Numeric. Constant \eqn{\beta} when `mode = "constant"`.
+#' @param base Numeric. Average level when `mode = "seasonal"`.
+#' @param amplitude Numeric in \eqn{[0,1)}. Seasonal fluctuation size.
+#' @param phase Numeric. Phase shift (days) for seasonality.
+#'
+#' @return Numeric vector of length `n_times` giving \eqn{\beta_t}.
+#'
+#' @examples
+#' # Constant beta
+#' make_beta(n_times = 30, mode = "constant", value = 0.16)
+#'
+#' # Seasonal beta
+#' make_beta(n_times = 365, mode = "seasonal", base = 0.18, amplitude = 0.25, phase = 30)
+#'
+#' @export
 make_beta <- function(
     n_times,                        # total simulation length (days)
     mode = c("constant","seasonal"),# choose type of beta: constant OR seasonal

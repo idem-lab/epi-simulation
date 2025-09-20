@@ -1,3 +1,45 @@
+#' @title Deterministic SIRS simulator (single population)
+#' 
+#' @description
+#' Simulate a deterministic SIRS model (no births/deaths/migration) over
+#' `n_times` discrete time steps, returning S, I, R **proportions** and
+#' daily **incidence (counts)**. The transmission rate `beta` can be a
+#' scalar (constant) or a vector of length `n_times` (time-varying).
+#'
+#' @param n_times Integer (\eqn{\ge} 2). Number of time steps (days).
+#' @param pop Integer/numeric (\eqn{>} 0). Total population size (closed).
+#' @param I_init Integer/numeric (\eqn{\ge} 0). Initial infected **count**.
+#' @param beta Numeric. Either a scalar (constant) or a vector of length `n_times`
+#'   giving the transmission rate each day (must be finite and \eqn{\ge} 0).
+#' @param gamma Numeric in \[0,1]. Recovery rate per day (e.g., `1/7`).
+#' @param omega Numeric in \[0,1]. Waning rate per day from R to S (e.g., `1/30`).
+#' @param seed Optional integer. If supplied, used to set the RNG seed (useful if
+#'   `beta` was generated stochastically upstream).
+#'
+#' @return A list with components:
+#' \describe{
+#'   \item{time}{Integer vector `1:n_times`.}
+#'   \item{S, I, R}{Numeric vectors of length `n_times` (proportions).}
+#'   \item{incidence}{Numeric vector of length `n_times` (daily **counts** of new infections).}
+#'   \item{params}{List of inputs used (including the full `beta` vector) for reproducibility.}
+#' }
+#'
+#' @examples
+#' # Constant-beta run
+#' out1 <- simulate_sirs_det(n_times = 60, pop = 1e5, I_init = 10,
+#'                           beta = 0.16, gamma = 1/7, omega = 1/30)
+#' str(out1)
+#'
+#' # Seasonal beta via a helper (e.g., make_beta)
+#' # b <- make_beta(n_times = 365, mode = "seasonal",
+#' #                base = 0.18, amplitude = 0.25, phase = 30)
+#' # out2 <- simulate_sirs_det(n_times = 365, pop = 5e5, I_init = 25,
+#' #                           beta = b, gamma = 1/7, omega = 1/60)
+#'
+#' # Quick diagnostic plot (if you have plot_sir_diag)
+#' # plot_sir_diag(out1, which = "both_side")
+#'
+#' @export
 simulate_sirs_det <- function(
     n_times = 365,        # total number of time steps (e.g., days) to simulate
     pop     = 100000,     # total population size (closed population, no births/deaths)

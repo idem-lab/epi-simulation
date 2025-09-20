@@ -1,3 +1,33 @@
+#' @title Plot SIR trajectories and/or incidence diagnostics
+#' @description
+#' Produce diagnostic plots from a single-population SIR/SIRS simulation:
+#' S/I/R proportions, daily incidence, side-by-side panels, or an overlay with
+#' a secondary axis for incidence.
+#'
+#' @param sim A list-like simulation object with numeric vectors:
+#'   `time`, `S`, `I`, `R`, and `incidence` (all of equal length).
+#' @param which Character. One of
+#'   `c("both_side","overlay","sir","incidence")`. Selects the view to render.
+#'
+#' @return Invisibly returns `NULL`. Called for its side-effects of plotting.
+#'
+#' @examples
+#' # Minimal reproducible example
+#' set.seed(1)
+#' t <- 1:120
+#' S <- pmax(0, 1 - 0.6*(1 - exp(-t/60)))
+#' I <- pmax(0, 0.15*exp(-(t-40)^2/800))
+#' R <- pmax(0, 1 - S - I)
+#' inc <- pmax(0, round(diff(c(0, I))*1000 + rnorm(length(t), 0, 2)))
+#' sim <- list(time = t, S = S, I = I, R = R, incidence = inc)
+#'
+#' plot_sir_diag(sim, which = "sir")
+#' plot_sir_diag(sim, which = "incidence")
+#' plot_sir_diag(sim, which = "both_side")
+#' plot_sir_diag(sim, which = "overlay")
+#'
+#' @importFrom graphics par plot lines legend axis mtext
+#' @export
 plot_sir_diag <- function(
     sim,
     which = c("both_side","overlay","sir","incidence")

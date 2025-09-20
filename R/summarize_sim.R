@@ -1,3 +1,35 @@
+#' @title Summarize key outbreak metrics from a simulation
+#' @description
+#' Extract headline diagnostics from SIRS simulations: peak infected proportion
+#' and its day, peak daily incidence (count) and its day, and the final recovered
+#' proportion. Works for **deterministic single-run** outputs or **stochastic
+#' single-population, multi-run** outputs.
+#'
+#' @param sim A simulation result list. See **Details** for the required fields.
+#'
+#' @return A `data.frame` with one row per simulation path and columns:
+#' \describe{
+#'   \item{sims}{Simulation index (1 for deterministic case).}
+#'   \item{peak_I}{Maximum infected **proportion** over time.}
+#'   \item{peak_I_day}{Time index (day) of `peak_I`.}
+#'   \item{peak_incidence}{Maximum daily **count** of new infections.}
+#'   \item{peak_incidence_day}{Time index (day) of `peak_incidence`.}
+#'   \item{final_R}{Recovered/immune **proportion** at the last day.}
+#' }
+#'
+#' @examples
+#' # Deterministic example
+#' # det <- simulate_sirs_det(n_times = 60, pop = 1e5, I_init = 10,
+#' #                          beta = 0.16, gamma = 1/7, omega = 1/30)
+#' # summarize_sim(det)
+#'
+#' # Stochastic (single population) example
+#' # st <- simulate_sirs(n_times = 120, pop = 8e4, I_init = 12,
+#' #                     beta = 0.16, gamma = 1/7, omega = 1/30,
+#' #                     epsilon = 1e-4, n_sims = 25, seed = 42)
+#' # head(summarize_sim(st))
+#' 
+#' @export
 summarize_sim <- function(sim) {
   # This function extracts a few headline metrics from a simulation result:
   #  - peak_I:       maximum infected PROPORTION (or fraction) over time

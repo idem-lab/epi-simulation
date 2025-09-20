@@ -1,3 +1,47 @@
+#' @title Stochastic SIRS simulator (single population)
+#' 
+#' @description
+#' Simulate a single-population SIRS process for `n_times` days, tracking S/I/R
+#' **counts** internally (for binomial transitions) and returning **proportions**
+#' plus daily **cases** (counts). Transmission `beta` may be constant or
+#' time-varying (length `n_times`). Optional reporting (`alpha`) thins cases.
+#'
+#' @param n_times Integer (\eqn{\ge} 2). Number of days.
+#' @param pop Integer/numeric (\eqn{>} 0). Total population size (closed).
+#' @param I_init Integer/numeric (\eqn{\ge} 0, \eqn{\le} `pop`). Initial infected count.
+#' @param beta Numeric scalar or vector (`n_times`). Transmission rate(s) per day
+#'   (must be finite and \eqn{\ge} 0).
+#' @param gamma Numeric in \[0,1]. Daily recovery probability.
+#' @param omega Numeric in \[0,1]. Daily waning probability (R→S).
+#' @param epsilon Numeric (\eqn{\ge} 0). External infection pressure added to the hazard.
+#' @param alpha `NULL` or numeric in \[0,1]. Reporting probability for thinning cases.
+#' @param n_sims Integer (\eqn{\ge} 1). Number of independent simulation runs (columns).
+#' @param stochastic Logical. If `TRUE` (default) use binomial transitions; otherwise
+#'   use rounded expectations.
+#' @param seed Optional integer. RNG seed for reproducibility.
+#'
+#' @return A list with components:
+#' \describe{
+#'   \item{time}{Integer vector `1:n_times`.}
+#'   \item{proportions}{Numeric array `[time x sims x state]` with `state` ∈ {`"S"`, `"I"`, `"R"`}.}
+#'   \item{cases}{Integer matrix `[time x sims]` of daily (reported) cases.}
+#'   \item{params}{List echoing inputs (including the full `beta` vector).}
+#' }
+#'
+#' @examples
+#' # 50 stochastic runs with constant beta
+#' out <- simulate_sirs(n_times = 200, pop = 1e5, I_init = 20,
+#'                      beta = 0.16, gamma = 1/7, omega = 1/30,
+#'                      epsilon = 1e-4, n_sims = 50, seed = 42)
+#' dim(out$proportions)  # 200 x 50 x 3
+#'
+#' # Time-varying beta (e.g., seasonal) and reported cases at 60%
+#' # b <- make_beta(365, mode = "seasonal", base = 0.18, amplitude = 0.25, phase = 30)
+#' # out2 <- simulate_sirs(365, 2e5, 15, beta = b, gamma = 1/7, omega = 1/60,
+#' #                       epsilon = 1e-4, alpha = 0.6, n_sims = 25, seed = 1)
+#'
+#' @importFrom stats rbinom
+#' @export
 simulate_sirs <- function(
     n_times   = 365,     # total number of time steps (e.g., days) to simulate
     pop       = 100000,  # population size (closed system: no births/deaths/migration)
