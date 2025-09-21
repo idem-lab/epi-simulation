@@ -1,5 +1,8 @@
 # --- Fixed-β sanity check: deterministic vs mean of stochastic ---
 
+if (!requireNamespace("R.utils", quietly = TRUE)) install.packages("R.utils")
+R.utils::sourceDirectory("R/", modifiedOnly = FALSE)
+
 # Source Christy's simulators (repo root)
 source("simulate_sirs_det.R")
 source("simulate_sirs_stoch.R")  # defines simulate_sirs(...)

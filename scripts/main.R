@@ -1,6 +1,5 @@
-# scripts/main.R
-source("./simulate_sirs.R")
-source("./sanity_check.R")
+if (!requireNamespace("R.utils", quietly = TRUE)) install.packages("R.utils")
+R.utils::sourceDirectory("R/", modifiedOnly = FALSE)
 
 # Params
 set.seed(12)
