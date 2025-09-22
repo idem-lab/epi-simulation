@@ -73,8 +73,9 @@ plot(det$time, det$I, type = "l", lwd = 2, col = "#0072B2",
 ribbon(det$time, I_band$low, I_band$high)
 lines(det$time, I_mean, lwd = 2, col = "black")   # stochastic mean
 lines(det$time, det$I,   lwd = 2, col = "#0072B2")# deterministic
-legend("topright", c("stoch 10–90%", "stoch mean", "deterministic"),
-       lty = c(1,1,1), lwd = c(10,2,2), col = c(adjustcolor("gray",0.25),"black","#0072B2"),
+legend("topright", c("stoch 10-90%", "stoch mean", "deterministic"),
+       lty = c(1,1,1), lwd = c(10,2,2),
+       col = c(adjustcolor("gray",0.25),"black","#0072B2"),
        bty = "n", seg.len = 2)
 
 # (2) Incidence counts
