@@ -9,6 +9,13 @@
 #' @return data.frame with `time` and `cum_incidence` (+ `sim`/`group` if present).
 #' @examples
 #' # ci <- cumulative_incidence(sim); head(ci)
+
+# Project: Kids Research Institute — SIRS modelling
+# Script: R/cum_metrics.R
+# Purpose: Compute cumulative incidence and final attack rate
+# Inputs: sim (deterministic | stochastic | multi-pop)
+# Outputs: data.frame(time, cum_incidence) and numeric attack rate(s)
+
 cumulative_incidence <- function(sim) {
   # Deterministic single-pop
   if (!is.null(sim$incidence) && is.vector(sim$incidence) && is.null(sim$cases)) {
@@ -51,12 +58,4 @@ attack_rate <- function(sim) {
   # Stochastic multi-run
   if (!is.null(sim$proportions)) {
     M <- dim(sim$proportions)[2]
-    return(sapply(seq_len(M), function(j) tail(sim$proportions[, j, "R"], 1)))
-  }
-  # Multi-pop deterministic
-  if (!is.null(sim$R) && is.matrix(sim$R)) {
-    G <- ncol(sim$R)
-    return(sapply(seq_len(G), function(g) tail(sim$R[, g], 1)))
-  }
-  stop("Unrecognized sim structure for attack_rate().")
-}
+    return(sapply(seq_len(M), func

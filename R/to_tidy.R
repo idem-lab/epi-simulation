@@ -7,6 +7,13 @@
 #' @return data.frame in long (tidy) format.
 #' @examples
 #' # df <- to_tidy(sim); head(df)
+
+# Project: Kids Research Institute — SIRS modelling
+# Script: R/to_tidy.R
+# Purpose: Convert sim outputs to one tidy long table
+# Inputs: sim (deterministic | stochastic | multi-pop)
+# Outputs: data.frame: time, group, sim, state(S/I/R/incidence), value
+
 to_tidy <- function(sim) {
   pack <- function(t, g, s, S, I, R, inc) {
     rbind(
@@ -36,13 +43,4 @@ to_tidy <- function(sim) {
   }
   
   # Multi-pop deterministic (matrices S/I/R/incidence)
-  if (is.matrix(sim$S) && is.matrix(sim$incidence)) {
-    G <- ncol(sim$S)
-    out <- lapply(seq_len(G), function(g) {
-      pack(sim$time, g, 1, sim$S[, g], sim$I[, g], sim$R[, g], sim$incidence[, g])
-    })
-    return(do.call(rbind, out))
-  }
-  
-  stop("Unrecognized sim structure for to_tidy().")
-}
+  if (is.matrix(sim$S) && is.matrix(sim$inci

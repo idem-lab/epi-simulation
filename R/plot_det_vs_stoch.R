@@ -15,6 +15,13 @@
 #' @return Invisibly returns a list with mean and quantiles (for testing).
 #' @examples
 #' # plot_det_vs_stoch(det, st, state = "I")
+
+# Project: Kids Research Institute — SIRS modelling
+# Script: R/plot_det_vs_stoch.R
+# Purpose: Overlay deterministic series over stochastic ribbon + mean
+# Inputs: det (simulate_sirs_det output), stoch (simulate_sirs output), state/probs
+# Outputs: Plot on current device; invisibly returns mean/quantiles
+
 plot_det_vs_stoch <- function(det, stoch,
                               state = c("I", "incidence"),
                               probs = c(0.1, 0.9),
@@ -66,12 +73,4 @@ plot_det_vs_stoch <- function(det, stoch,
   lines(x, band$mean, lwd = 2, col = "black")                  # stochastic mean
   lines(x, y_det,    lwd = 2, col = det_col)                   # deterministic
   legend("topright",
-         c(sprintf("stoch %d-%d%%", round(100*probs[1]), round(100*probs[2])),
-           "stoch mean", "deterministic"),
-         lty = 1, lwd = c(8, 2, 2),
-         col = c(grDevices::adjustcolor("gray", 0.25), "black", det_col),
-         bty = "n", seg.len = 2
-  )
-  
-  invisible(list(mean = band$mean, low = band$low, high = band$high))
-}
+         c(sprintf("stoch %d-%d%%

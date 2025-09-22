@@ -20,6 +20,13 @@
 #'   - multi-pop:                 `time, group, Reff`
 #' @examples
 #' # df <- reff_from_sim(sim); head(df)
+
+# Project: Kids Research Institute — SIRS modelling
+# Script: R/reff_from_sim.R
+# Purpose: Compute R_eff(t) for deterministic, stochastic, and multi-pop outputs
+# Inputs: sim list with params$beta and params$gamma; uses S (or proportions[,, "S"])
+# Outputs: data.frame(time, Reff) or with sim/group columns
+
 reff_from_sim <- function(sim) {
   # helpers to pull parameters
   get_param <- function(x, k) {
@@ -56,14 +63,4 @@ reff_from_sim <- function(sim) {
     S <- sim$S
     T <- nrow(S); G <- ncol(S)
     if (is.vector(beta)) beta <- matrix(beta, nrow = T, ncol = G)
-    if (!is.matrix(beta) || nrow(beta) != T || ncol(beta) != G) {
-      stop("For multi-pop, beta must be [time x groups].")
-    }
-    out <- lapply(seq_len(G), function(g) {
-      data.frame(time = sim$time, group = g, Reff = S[, g] * (beta[, g] / gamma))
-    })
-    return(do.call(rbind, out))
-  }
-  
-  stop("Unrecognized sim structure for reff_from_sim().")
-}
+    if (!is.matrix(beta) || nrow(beta) != T || ncol(

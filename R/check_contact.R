@@ -5,6 +5,13 @@
 #' @return TRUE (invisibly) or an error if invalid.
 #' @examples
 #' # check_contact(diag(3))
+
+# Project: Kids Research Institute — SIRS modelling
+# Script: R/check_contact.R
+# Purpose: Validate and normalize contact/mixing matrices
+# Inputs: C matrix; method = "row" or "col" for normalization
+# Outputs: TRUE (validator) or normalized matrix
+
 check_contact <- function(C) {
   if (!is.matrix(C)) stop("C must be a matrix.")
   if (nrow(C) != ncol(C)) stop("C must be square (same rows and cols).")
@@ -24,11 +31,4 @@ check_contact <- function(C) {
 normalize_contact <- function(C, method = c("row", "col")) {
   method <- match.arg(method)
   check_contact(C)
-  if (method == "row") {
-    rs <- rowSums(C); if (any(rs == 0)) stop("Row with zero sum cannot be normalized.")
-    return(C / rs)
-  } else {
-    cs <- colSums(C); if (any(cs == 0)) stop("Column with zero sum cannot be normalized.")
-    return(t(t(C) / cs))
-  }
-}
+  if (method

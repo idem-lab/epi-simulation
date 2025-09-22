@@ -33,12 +33,4 @@ on.exit(dev.off(), add = TRUE)
 
 # Quick plots (base R)
 plot(sim$t, sim$N_t, type = "l", cex = 0.5, pch = 20,
-     ylab = "count", xlab = "time", main = "incident infections")
-
-plot(sim$t, sim$S, type = "l", cex = 0.5, pch = 20, col = "#009E73",
-     ylab = "proportion", xlab = "time")
-points(sim$t, sim$I, type = "l", cex = 0.5, pch = 20, col = "#CC79A7")
-points(sim$t, sim$R, type = "l", cex = 0.5, pch = 20, col = "#0072B2")
-legend('topright', c("Susceptible","Infected","Recovered"),
-       lty = 1, pch = 20, col = c("#009E73","#CC79A7","#0072B2"),
-       title = "Proportion", cex = 1)
+  

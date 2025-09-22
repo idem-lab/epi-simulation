@@ -11,6 +11,13 @@
 #'        If provided, it is called at each t BEFORE the update; return NULL to do nothing.
 #'
 #' @return data.frame with columns: t, S, I, R (proportions), N_t (incident count), beta.
+
+# Project: Kids Research Institute — SIRS modelling
+# Script: R/simulate_sirs.R
+# Purpose: Discrete-time SIRS simulator (single population)
+# Inputs: n_times, pop, I_init, omega, gamma, beta_vec, seed, shock_fun
+# Outputs: data.frame: t, S, I, R (props), N_t (counts), beta
+
 simulate_sirs <- function(
     n_times,
     pop,
@@ -53,17 +60,4 @@ simulate_sirs <- function(
     
     # discrete SIRS updates
     S[t] <- S[t - 1] - beta_prev * S[t - 1] * I[t - 1] + omega * R[t - 1]
-    I[t] <- I[t - 1] + beta_prev * S[t - 1] * I[t - 1] - gamma * I[t - 1]
-    R[t] <- R[t - 1] - omega * R[t - 1] + gamma * I[t - 1]
-    
-    # incident infections (emergent)
-    N_t[t] <- pop * beta_prev * S[t - 1] * I[t - 1]
-  }
-  
-  data.frame(
-    t    = seq_len(n_times),
-    S = S, I = I, R = R,
-    N_t  = N_t,
-    beta = beta_vec
-  )
-}
+    I[t] <- I[t - 1] + beta_prev * S[t - 1] * I[t - 1] - gamma * I
