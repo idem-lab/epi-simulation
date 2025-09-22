@@ -1,4 +1,8 @@
-# --- Fixed-β sanity check: deterministic vs mean of stochastic ---
+# Project: Kids Research Institute — SIRS modelling
+# Script: scripts/check_fixed_beta.R
+# Purpose: Sanity-check constant β — deterministic vs mean stochastic; save overlay plots
+# Inputs: functions in R/ (auto-sourced) + Christy’s root simulators
+# Outputs: plots/check_fixed_beta.pdf + RMSE in console
 
 if (!requireNamespace("R.utils", quietly = TRUE)) install.packages("R.utils")
 R.utils::sourceDirectory("R/", modifiedOnly = FALSE)

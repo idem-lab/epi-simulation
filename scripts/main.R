@@ -1,3 +1,9 @@
+# Project: Kids Research Institute — SIRS modelling
+# Script: scripts/main.R
+# Purpose: End-to-end run — simulate, sanity check, and quick plots
+# Inputs: functions in R/ (auto-sourced)
+# Outputs: plots/main_run.pdf + TRUE/FALSE sanity check
+
 if (!requireNamespace("R.utils", quietly = TRUE)) install.packages("R.utils")
 R.utils::sourceDirectory("R/", modifiedOnly = FALSE)
 

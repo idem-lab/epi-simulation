@@ -1,3 +1,12 @@
+# Project: Kids Research Institute — SIRS modelling
+# Script: scripts/test_utils.R
+# Purpose: Exercise Varun’s utilities across deterministic/stochastic/multi-pop
+# Inputs: functions in R/ (auto-sourced) + Christy’s root simulators
+# Outputs: console checks (optional plots to plots/ if added)
+
+if (!requireNamespace("R.utils", quietly = TRUE)) install.packages("R.utils")
+R.utils::sourceDirectory("R/", modifiedOnly = FALSE)
+
 # --- Source Christy's simulators (root) ---
 source("simulate_sirs_det.R")
 source("simulate_sirs_stoch.R")
