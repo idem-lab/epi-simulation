@@ -1,12 +1,18 @@
-# Demo for plot_det_vs_stoch
+# Project: Kids Research Institute — SIRS modelling
+# Script: scripts/demo_plot_det_vs_stoch.R
+# Purpose: Visualise deterministic series over stochastic ribbon (I and incidence)
 
-# Christy's simulators
+# Load all functions from R/
+if (!requireNamespace("R.utils", quietly = TRUE)) install.packages("R.utils")
+R.utils::sourceDirectory("R/", modifiedOnly = FALSE)
+
+# Christy's simulators (still in repo root)
 source("simulate_sirs_det.R")
 source("simulate_sirs_stoch.R")
-source("make_beta.R")
 
-# Varun's plot
-source("R/plot_det_vs_stoch.R")
+outdir <- "plots"; if (!dir.exists(outdir)) dir.create(outdir, recursive = TRUE)
+pdf(file.path(outdir, "demo_det_vs_stoch.pdf"), width = 12, height = 5)
+on.exit(dev.off(), add = TRUE)
 
 # Params
 n_times <- 200; pop <- 100000; I_init <- 10

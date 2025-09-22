@@ -21,6 +21,10 @@ sim <- simulate_sirs(
 # Sanity
 print(sanity_check(sim))
 
+outdir <- "plots"; if (!dir.exists(outdir)) dir.create(outdir, recursive = TRUE)
+pdf(file.path(outdir, "main_run.pdf"), width = 8, height = 6)
+on.exit(dev.off(), add = TRUE)
+
 # Quick plots (base R)
 plot(sim$t, sim$N_t, type = "l", cex = 0.5, pch = 20,
      ylab = "count", xlab = "time", main = "incident infections")

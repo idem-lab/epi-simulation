@@ -3,6 +3,11 @@
 if (!requireNamespace("R.utils", quietly = TRUE)) install.packages("R.utils")
 R.utils::sourceDirectory("R/", modifiedOnly = FALSE)
 
+# Output device (all plots go to plots/check_fixed_beta.pdf)
+outdir <- "plots"; if (!dir.exists(outdir)) dir.create(outdir, recursive = TRUE)
+pdf(file.path(outdir, "check_fixed_beta.pdf"), width = 12, height = 5)
+on.exit(dev.off(), add = TRUE)  # ensures the PDF closes even on error
+
 # Source Christy's simulators (repo root)
 source("simulate_sirs_det.R")
 source("simulate_sirs_stoch.R")  # defines simulate_sirs(...)
