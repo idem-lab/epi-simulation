@@ -3,3 +3,6 @@
 .RData
 .Ruserdata
 Rplots.pdf
+.DS_Store
+plots/
+!plots/.gitkeep
