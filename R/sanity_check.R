@@ -10,4 +10,8 @@
 # Inputs: sim data.frame with S, I, R; tol
 # Outputs: TRUE/FALSE
 
-sanity_c
+sanity_check <- function(sim_df, tol = 1e-12) {
+  stopifnot(all(c("S","I","R") %in% names(sim_df)))
+  sums <- sim_df$S + sim_df$I + sim_df$R
+  isTRUE(all.equal(rep(1, length(sums)), sums, tolerance = tol))
+}

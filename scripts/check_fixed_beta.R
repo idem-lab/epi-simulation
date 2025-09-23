@@ -85,4 +85,16 @@ lines(det$time, det$I,   lwd = 2, col = "#0072B2")# deterministic
 legend("topright", c("stoch 10-90%", "stoch mean", "deterministic"),
        lty = c(1,1,1), lwd = c(10,2,2),
        col = c(adjustcolor("gray",0.25),"black","#0072B2"),
-       bty = "n", seg.len = 2
+       bty = "n", seg.len = 2)
+
+# (2) Incidence counts
+ylim_inc <- range(0, det$incidence, Inc_band$high, na.rm = TRUE)
+plot(det$time, det$incidence, type = "l", lwd = 2, col = "#CC79A7",
+     ylim = ylim_inc, xlab = "day", ylab = "new infections (count)",
+     main = "Incidence: det vs stochastic")
+ribbon(det$time, Inc_band$low, Inc_band$high)
+lines(det$time, Inc_mean, lwd = 2, col = "black")   # stochastic mean
+lines(det$time, det$incidence, lwd = 2, col = "#CC79A7")  # deterministic
+
+# ---- Done ----
+cat("\nFixed-β sanity check completed ✅\n")

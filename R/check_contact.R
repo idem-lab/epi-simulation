@@ -31,4 +31,11 @@ check_contact <- function(C) {
 normalize_contact <- function(C, method = c("row", "col")) {
   method <- match.arg(method)
   check_contact(C)
-  if (method
+  if (method == "row") {
+    rs <- rowSums(C); if (any(rs == 0)) stop("Row with zero sum cannot be normalized.")
+    return(C / rs)
+  } else {
+    cs <- colSums(C); if (any(cs == 0)) stop("Column with zero sum cannot be normalized.")
+    return(t(t(C) / cs))
+  }
+}

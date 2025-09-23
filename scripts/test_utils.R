@@ -83,4 +83,20 @@ sim_multi <- simulate_sirs_multi(
   pop_vec = c(100000, 50000, 20000),
   I_init  = c(10, 5, 0),
   beta_mat = beta_mat2,
-  gamma = 1
+  gamma = 1/7, omega = 1/30,
+  C = C_row
+)
+
+reff_multi <- reff_from_sim(sim_multi)
+df_multi   <- to_tidy(sim_multi)
+ci_multi   <- cumulative_incidence(sim_multi)
+ar_multi   <- attack_rate(sim_multi)
+
+# Checks
+stopifnot(all(c("time","group","Reff") %in% names(reff_multi)))
+stopifnot(length(ar_multi) == 3)
+
+cat("Multi-pop: final attack rate by group:\n")
+print(round(ar_multi, 3))
+
+cat("\nAll Varun utility tests completed successfully ✅\n")

@@ -58,4 +58,12 @@ attack_rate <- function(sim) {
   # Stochastic multi-run
   if (!is.null(sim$proportions)) {
     M <- dim(sim$proportions)[2]
-    return(sapply(seq_len(M), func
+    return(sapply(seq_len(M), function(j) tail(sim$proportions[, j, "R"], 1)))
+  }
+  # Multi-pop deterministic
+  if (!is.null(sim$R) && is.matrix(sim$R)) {
+    G <- ncol(sim$R)
+    return(sapply(seq_len(G), function(g) tail(sim$R[, g], 1)))
+  }
+  stop("Unrecognized sim structure for attack_rate().")
+}

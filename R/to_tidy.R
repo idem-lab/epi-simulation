@@ -43,4 +43,13 @@ to_tidy <- function(sim) {
   }
   
   # Multi-pop deterministic (matrices S/I/R/incidence)
-  if (is.matrix(sim$S) && is.matrix(sim$inci
+  if (is.matrix(sim$S) && is.matrix(sim$incidence)) {
+    G <- ncol(sim$S)
+    out <- lapply(seq_len(G), function(g) {
+      pack(sim$time, g, 1, sim$S[, g], sim$I[, g], sim$R[, g], sim$incidence[, g])
+    })
+    return(do.call(rbind, out))
+  }
+  
+  stop("Unrecognized sim structure for to_tidy().")
+}

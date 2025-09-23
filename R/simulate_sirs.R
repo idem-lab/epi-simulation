@@ -60,4 +60,17 @@ simulate_sirs <- function(
     
     # discrete SIRS updates
     S[t] <- S[t - 1] - beta_prev * S[t - 1] * I[t - 1] + omega * R[t - 1]
-    I[t] <- I[t - 1] + beta_prev * S[t - 1] * I[t - 1] - gamma * I
+    I[t] <- I[t - 1] + beta_prev * S[t - 1] * I[t - 1] - gamma * I[t - 1]
+    R[t] <- R[t - 1] - omega * R[t - 1] + gamma * I[t - 1]
+    
+    # incident infections (emergent)
+    N_t[t] <- pop * beta_prev * S[t - 1] * I[t - 1]
+  }
+  
+  data.frame(
+    t    = seq_len(n_times),
+    S = S, I = I, R = R,
+    N_t  = N_t,
+    beta = beta_vec
+  )
+}

@@ -63,4 +63,14 @@ reff_from_sim <- function(sim) {
     S <- sim$S
     T <- nrow(S); G <- ncol(S)
     if (is.vector(beta)) beta <- matrix(beta, nrow = T, ncol = G)
-    if (!is.matrix(beta) || nrow(beta) != T || ncol(
+    if (!is.matrix(beta) || nrow(beta) != T || ncol(beta) != G) {
+      stop("For multi-pop, beta must be [time x groups].")
+    }
+    out <- lapply(seq_len(G), function(g) {
+      data.frame(time = sim$time, group = g, Reff = S[, g] * (beta[, g] / gamma))
+    })
+    return(do.call(rbind, out))
+  }
+  
+  stop("Unrecognized sim structure for reff_from_sim().")
+}

@@ -26,3 +26,14 @@ adjust_beta <- function(beta, windows, multiplier = 0.8) {
   } else stop("beta must be a vector or matrix.")
   
   if (!is.data.frame(windows) || !all(c("start", "end") %in% names(windows))) {
+    stop("windows must be a data.frame with columns: start, end")
+  }
+  
+  for (i in seq_len(nrow(windows))) {
+    s <- max(1, as.integer(windows$start[i]))
+    e <- min(nrow(B), as.integer(windows$end[i]))
+    if (s <= e) B[s:e, ] <- B[s:e, ] * multiplier
+  }
+  
+  if (vec) drop(B[, 1]) else B
+}
