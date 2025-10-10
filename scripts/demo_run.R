@@ -49,11 +49,7 @@ mp_alpha   <- NULL
 mp_seed    <- 99
 mp_ribbon  <- c(0.05, 0.95)
 
-# ---- 2) LOAD FUNCTIONS ----
-R.utils::sourceDirectory('R/')
-source("plot_det_vs_stoch.R")
-
-# ---- 3) RUN DEMO ----
+# ---- 2) RUN DEMO ----
 
 # A) Deterministic (constant beta)
 cat("\n[A] Deterministic (constant beta)\n")
@@ -173,3 +169,113 @@ plot_dashboard_v2(
     main    = "Det vs Stoch (constant β)"
   )
 )
+
+# ==============================================================
+# 3) INTERACTIVE PLOT PICKER — call run_plot_picker() from Console
+# ==============================================================
+
+plot_actions <- list(
+  "A) Det. constant β — SIR both_side" = function() {
+    plot_sir_diag(sim_A, which = "both_side")
+  },
+  "B) Det. seasonal β — overlay" = function() {
+    plot_sir_diag(sim_B, which = "overlay")
+  },
+  "C) Stoch. seasonal β — first trajectory" = function() {
+    plot_sir_diag(list(
+      time = stoch_C$time,
+      S = stoch_C$proportions[, 1, "S"],
+      I = stoch_C$proportions[, 1, "I"],
+      R = stoch_C$proportions[, 1, "R"],
+      incidence = stoch_C$cases[, 1]
+    ), which = "both_side")
+  },
+  "E1) Multi-pop det. — I(t) per pop" = function() {
+    plot_multi_I(sim_E)
+  },
+  "E2) Multi-pop det. — incidence per million" = function() {
+    plot_multi_incidence(sim_E, per_million = TRUE)
+  },
+  "F1) Multi-pop stoch. — ribbons for I(t)" = function() {
+    plot_multi_stoch_I(sim_F, probs = mp_ribbon)
+  },
+  "F2) Multi-pop stoch. — ribbons for incidence per million" = function() {
+    plot_multi_stoch_incidence(sim_F, per_million = TRUE, probs = mp_ribbon)
+  },
+  "G1) 6-panel dashboard" = function() {
+    plot_dashboard(
+      sim_E,
+      probs = c(0.05, 0.95),
+      per_million = TRUE,
+      main = "Multi-pop deterministic",
+      det_stoch = list(
+        det     = det_const,
+        stoch   = st_const,
+        state   = "incidence",
+        probs   = c(0.10, 0.90),
+        det_col = "#2C7FB8",
+        main    = "Det vs Stoch (constant β)"
+      )
+    )
+  },
+  "G2) 9-panel dashboard" = function() {
+    plot_dashboard_v2(
+      sim_F,
+      probs = mp_ribbon,
+      per_million = TRUE,
+      main = "Multi-pop stochastic",
+      det_stoch = list(
+        det     = det_const,
+        stoch   = st_const,
+        state   = "incidence",
+        probs   = c(0.10, 0.90),
+        det_col = "#2C7FB8",
+        main    = "Det vs Stoch (constant β)"
+      )
+    )
+  }
+)
+
+run_plot_picker <- function() {
+  if (!interactive()) stop("Interactive console required.")
+  
+  # 1) Try one-line multi-select first
+  cat("\nSelect one or more plots to render:\n\n")
+  for (i in seq_along(plot_actions)) cat(sprintf("%2d: %s\n", i, names(plot_actions)[i]))
+  cat("\n")
+  flush.console()
+  ans <- tryCatch(readline("Enter numbers separated by space/comma (or press Enter to skip): "),
+                  error = function(e) "")
+  
+  tokens <- unlist(strsplit(ans, "[,\\s]+"))
+  nums <- unique(suppressWarnings(as.integer(tokens)))
+  nums <- nums[!is.na(nums) & nums >= 1 & nums <= length(plot_actions)]
+  
+  if (length(nums) > 0) {
+    cat("\nRendering:\n",
+        paste(sprintf("%2d: %s", nums, names(plot_actions)[nums]), collapse = "\n"),
+        "\n\n", sep = "")
+    invisible(lapply(plot_actions[nums], function(f) f()))
+    cat("\nAll done.\n")
+    return(invisible(NULL))
+  }
+  
+  # 2) Fallback: step-by-step menu loop (rock-solid)
+  cat("\nNo line input detected. Switching to step-by-step selector.\n")
+  picked <- integer(0)
+  repeat {
+    choice <- utils::menu(c(names(plot_actions), "Done"),
+                          title = "Pick a plot (choose one at a time)")
+    if (choice <= 0 || choice > length(plot_actions)) break
+    picked <- c(picked, choice)
+    plot_actions[[choice]]()  # draw immediately
+  }
+  if (!length(picked)) {
+    cat("\nNo selections made. Nothing to render.\n")
+  } else {
+    cat("\nRendered:\n",
+        paste(sprintf("%2d: %s", picked, names(plot_actions)[picked]), collapse = "\n"),
+        "\n\n", sep = "")
+  }
+  cat("All done.\n")
+}
