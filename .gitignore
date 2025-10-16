@@ -7,3 +7,9 @@ Rplots.pdf
 plots/
 !plots/.gitkeep
 plots/*.pdf
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj
+plots/*.pdf
+outputs/
