@@ -18,7 +18,7 @@
 # Inputs: n_times, pop, I_init, omega, gamma, beta_vec, seed, shock_fun
 # Outputs: data.frame: t, S, I, R (props), N_t (counts), beta
 
-simulate_sirs <- function(
+simulate_sirs_df <- function(
     n_times,
     pop,
     I_init,
