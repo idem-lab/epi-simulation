@@ -73,4 +73,3 @@ simulate_sirs_df <- function(
     N_t  = N_t,
     beta = beta_vec
   )
-}
