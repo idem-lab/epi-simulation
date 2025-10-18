@@ -30,19 +30,19 @@
 #'
 #' @examples
 #' # 50 stochastic runs with constant beta
-#' out <- simulate_sirs(n_times = 200, pop = 1e5, I_init = 20,
+#' out <- simulate_sirs_stoch(n_times = 200, pop = 1e5, I_init = 20,
 #'                      beta = 0.16, gamma = 1/7, omega = 1/30,
 #'                      epsilon = 1e-4, n_sims = 50, seed = 42)
 #' dim(out$proportions)  # 200 x 50 x 3
 #'
 #' # Time-varying beta (e.g., seasonal) and reported cases at 60%
 #' # b <- make_beta(365, mode = "seasonal", base = 0.18, amplitude = 0.25, phase = 30)
-#' # out2 <- simulate_sirs(365, 2e5, 15, beta = b, gamma = 1/7, omega = 1/60,
+#' # out2 <- simulate_sirs_stoch(365, 2e5, 15, beta = b, gamma = 1/7, omega = 1/60,
 #' #                       epsilon = 1e-4, alpha = 0.6, n_sims = 25, seed = 1)
 #'
 #' @importFrom stats rbinom
 #' @export
-simulate_sirs <- function(
+simulate_sirs_stoch <- function(
     n_times   = 365,     # total number of time steps (e.g., days) to simulate
     pop       = 100000,  # population size (closed system: no births/deaths/migration)
     I_init    = 10,      # initial infected COUNT at day 1
