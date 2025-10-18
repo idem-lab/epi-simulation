@@ -95,7 +95,7 @@ plot_sir_diag <- function(
          xlab="day", ylab="proportion", main="S, I, R + incidence")
     lines(sim$time, sim$I, lwd=2, col="#CC79A7")
     lines(sim$time, sim$R, lwd=2, col="#009E73")
-    legend("topleft", c("S","I","R"),
+    legend("topright", c("S","I","R"),
            lty=1, lwd=2, col=c("#0072B2","#CC79A7","#009E73"), bty="n")
 
     # Add incidence as a second (right) axis.
