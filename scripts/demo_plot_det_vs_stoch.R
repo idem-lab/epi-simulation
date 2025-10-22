@@ -8,10 +8,6 @@
 if (!requireNamespace("R.utils", quietly = TRUE)) install.packages("R.utils")
 R.utils::sourceDirectory("R/", modifiedOnly = FALSE)
 
-# Christy's simulators (still in repo root)
-source("simulate_sirs_det.R")
-source("simulate_sirs_stoch.R")
-
 outdir <- "plots"; if (!dir.exists(outdir)) dir.create(outdir, recursive = TRUE)
 pdf(file.path(outdir, "demo_det_vs_stoch.pdf"), width = 12, height = 5)
 on.exit(dev.off(), add = TRUE)
@@ -25,7 +21,7 @@ n_sims <- 200; seed <- 42
 det <- simulate_sirs_det(n_times, pop, I_init, beta0, gamma, omega)
 
 # Stochastic with same params
-st <- simulate_sirs(n_times, pop, I_init, beta0, gamma, omega,
+st <- simulate_sirs_stoch(n_times, pop, I_init, beta0, gamma, omega,
                     epsilon = 0, alpha = NULL, n_sims = n_sims,
                     stochastic = TRUE, seed = seed)
 
