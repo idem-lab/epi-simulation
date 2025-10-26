@@ -92,7 +92,7 @@ plot_sir_diag <- function(
   if (which == "overlay") {
     # Base plot: S, I, R on [0,1] left y-axis
     plot(sim$time, sim$S, type="l", lwd=2, ylim=c(0,1), col="#0072B2",
-         xlab="day", ylab="proportion", main="S, I, R + incidence")
+         xlab="day", ylab="proportion", main="S, I, R + Daily incidence")
     lines(sim$time, sim$I, lwd=2, col="#CC79A7")
     lines(sim$time, sim$R, lwd=2, col="#009E73")
     legend("topright", c("S","I","R"),
