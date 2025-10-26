@@ -1,59 +1,58 @@
-# ================================================
-# demo_run.R — SIRS demo (deterministic, stochastic, multi-pop)
 # Sections:
-#   A) Deterministic (constant beta)
-#   B) Deterministic (seasonal beta)
-#   C) Stochastic (seasonal beta) + per-sim summary
-#   D) Sanity check (removed , seperate file)
-#   E) Multi-pop deterministic
-#   F) Multi-pop stochastic (mean + ribbons)
-#   G) Dashboards (6-panel and 9-panel)
-# ================================================
+#(A) Deterministic (constant beta)
+#(B) Deterministic (seasonal beta)
+#(C) Stochastic (constant beta)
+#(D) Stochastic (seasonal beta)
+#(E) Multi-pop deterministic
+#(F) Multi-pop stochastic
+#(G) Summary table of simulation results
+#(H) Dashboards with self arrangement
 
-# ---- 1. EDIT YOUR INPUTS HERE ----
-# Common (single-pop)
-n_times <- 365
-pop     <- 100000
-I_init  <- 10
-beta    <- 0.16
-gamma   <- 1/7
-omega   <- 1/30
+# ---- EDIT YOUR INPUTS HERE -------------------
+# Common components
+n_times <- 60      # Total days to simulate
+pop     <- 100000  # Population size
+I_init  <- 10      # Initial number of infectious individuals
+beta    <- 0.75    # Transmission rate  
+gamma   <- 1/7     # Recovery rate
+omega   <- 1/30    # Rate of loss of immunity(R -> S)
 
-# Seasonal beta (for B, C)
-season_base  <- 0.18
-season_amp   <- 0.25     # 0 ≤ amplitude < 1
-season_phase <- 30
 
-# Stochastic (C)
-n_sims   <- 200
-epsilon  <- 1e-4
-alpha    <- 0.3
-seed     <- 42
+# Seasonal beta (for B, D)
+season_base  <- 0.70   # Base transmission rate
+season_amp   <- 0.25   # Amplitude of seasonal variation (0 ≤ amplitude < 1)
+season_phase <- 30     # Phase shift in days
+
+# Stochastic (C,D,F)
+n_sims   <- 200   # Number of independent simulation runs (columns).
+epsilon  <- 1e-4  # External infection pressure.
+alpha    <- 0.3   # Reporting rate
+seed     <- 42    # Random seed for reproducibility
 
 # Multi-pop (E, F)
-mp_n_times <- 365
-mp_pops    <- c(100000, 500, 2000)
-mp_Iinit   <- c(10, 5, 0)
-mp_beta    <- 0.20       # scalar; recycled to [time x pops]
-mp_gamma   <- 1/7
-mp_omega   <- 1/30
-mp_contact <- matrix(c(1,0.2,0.1,
-                       0.2,1,0.3,
-                       0.1,0.3,1),
-                     3, 3, byrow = TRUE)
+mp_n_times <- 180                     # Total days to simulate
+mp_pops    <- c(100000, 500, 200000)  # Population sizes
+mp_Iinit   <- c(100, 5, 1000)         # Initial infectious individuals
+mp_beta    <- 0.20                    # Transmission rate
+mp_gamma   <- 1/7                     # Recovery rate
+mp_omega   <- 1/30                    # Rate of loss of immunity(R -> S)
 
-# Multi-pop stochastic extra
-mp_sims    <- 200
-mp_epsilon <- 0
-mp_alpha   <- NULL
-mp_seed    <- 99
-mp_ribbon  <- c(0.05, 0.95)
+# Multi-pop stochastic (F)
+mp_sims    <- 200      # Number of stochastic simulations
+mp_epsilon <- 0        # Noise parameter
+mp_alpha   <- NULL     # Scaling factor for stochasticity
+mp_seed    <- 99       # Random seed for reproducibility
 
-# ---- 2) LOAD FUNCTIONS ----
-R.utils::sourceDirectory('R/')
-source("plot_det_vs_stoch.R")
+# Customise uncertainty ribbons(Default to 95%)
+ribbon_probs <- c(0.025, 0.975)
 
-# ---- 3) RUN DEMO ----
+# Customise colors for multiple populations
+my_pop_cols <- c("#E41A1C", "#377EB8", "#4DAF4A")
+
+# ---- 2) LOAD FUNCTIONS --------------------------
+R.utils::sourceDirectory("R/")
+
+# ---- 3) RUN DEMO --------------------------------
 
 # A) Deterministic (constant beta)
 cat("\n[A] Deterministic (constant beta)\n")
@@ -61,6 +60,9 @@ sim_A <- simulate_sirs_det(
   n_times = n_times, pop = pop, I_init = I_init,
   beta = beta, gamma = gamma, omega = omega
 )
+plot_sir_diag(sim_A, which = "overlay")
+plot_sir_diag(sim_A, which = "sir")
+plot_sir_diag(sim_A, which = "incidence")
 plot_sir_diag(sim_A, which = "both_side")
 
 # B) Deterministic (seasonal beta)
@@ -74,102 +76,133 @@ sim_B <- simulate_sirs_det(
   beta = beta_B, gamma = gamma, omega = omega
 )
 plot_sir_diag(sim_B, which = "overlay")
+plot_sir_diag(sim_B, which = "sir")
+plot_sir_diag(sim_B, which = "incidence")
+plot_sir_diag(sim_B, which = "both_side")
 
-# C) Stochastic (seasonal beta) + per-sim summaries
-cat("\n[C] Stochastic (seasonal beta)\n")
-beta_C <- make_beta(
+# C) Stochastic (constant beta) — single pop
+cat("\n[C] Stochastic (constant beta)\n")
+stoch_C <- simulate_sirs_stoch(
+  n_times = n_times, pop = pop, I_init = I_init,
+  beta = beta, gamma = gamma, omega = omega,
+  epsilon = epsilon, alpha = alpha,
+  n_sims = n_sims, stochastic = TRUE, seed = seed + 1
+)
+stoch_C$params$ribbon_probs <- ribbon_probs
+
+plot_stoch(stoch_C, which = "SIR")
+plot_stoch(stoch_C, which = "incidence", per_million = TRUE)
+plot_stoch(stoch_C, which = "overlay")
+plot_stoch(stoch_C, which = "both")
+
+# D) Stochastic (seasonal beta) — single pop
+cat("\n[D] Stochastic (seasonal beta)\n")
+beta_CS <- make_beta(
   n_times, mode = "seasonal",
   base = season_base, amplitude = season_amp, phase = season_phase
 )
-stoch_C <- simulate_sirs(
+stoch_CS <- simulate_sirs_stoch(
   n_times = n_times, pop = pop, I_init = I_init,
-  beta = beta_C, gamma = gamma, omega = omega,
+  beta = beta_CS, gamma = gamma, omega = omega,
   epsilon = epsilon, alpha = alpha,
   n_sims = n_sims, stochastic = TRUE, seed = seed
 )
-# quick view: first trajectory
-plot_sir_diag(list(
-  time = stoch_C$time,
-  S = stoch_C$proportions[, 1, "S"],
-  I = stoch_C$proportions[, 1, "I"],
-  R = stoch_C$proportions[, 1, "R"],
-  incidence = stoch_C$cases[, 1]
-), which = "both_side")
-# headline summaries (first few sims)
-print(utils::head(summarize_sim(stoch_C), 5))
+stoch_CS$params$ribbon_probs <- ribbon_probs
+
+plot_stoch(stoch_CS, which = "incidence")
+plot_stoch(stoch_CS, which = "SIR")
+plot_stoch(stoch_CS, which = "overlay")
+plot_stoch(stoch_CS, which = "both")
 
 # E) Multi-pop deterministic
 cat("\n[E] Multi-pop deterministic\n")
 beta_mat <- matrix(mp_beta, nrow = mp_n_times, ncol = length(mp_pops))
 sim_E <- simulate_sirs_multi(
   n_times = mp_n_times, pop_vec = mp_pops, I_init = mp_Iinit,
-  beta_mat = beta_mat, gamma = mp_gamma, omega = mp_omega, C = mp_contact
+  beta_mat = beta_mat, gamma = mp_gamma, omega = mp_omega
 )
-plot_multi_I(sim_E)
-plot_multi_incidence(sim_E, per_million = TRUE)
 
-# F) Multi-pop stochastic (mean + ribbons)
-cat("\n[F] Multi-pop stochastic\n")
+plot_multi(sim_E, which = "S", group_style = "combined")
+plot_multi(sim_E, which = "I", group_style = "facet")
+
+# F) Multi-pop stochastic
+cat("\n[F] Multi-pop stochastic (C-free)\n")
 sim_F <- simulate_sirs_multi_stoch(
-  n_times   = mp_n_times,
-  pop_vec   = mp_pops,
-  I_init    = mp_Iinit,
-  beta_mat  = mp_beta,     # scalar OK; recycled internally
-  gamma     = mp_gamma,
-  omega     = mp_omega,
-  C         = mp_contact,
-  epsilon   = mp_epsilon,
-  alpha     = mp_alpha,
-  n_sims    = mp_sims,
+  n_times    = mp_n_times,
+  pop_vec    = mp_pops,
+  I_init     = mp_Iinit,
+  beta_mat   = mp_beta,     
+  gamma      = mp_gamma,
+  omega      = mp_omega,
+  epsilon    = mp_epsilon,
+  alpha      = mp_alpha,
+  n_sims     = mp_sims,
   stochastic = TRUE,
-  seed      = mp_seed
+  seed       = mp_seed
 )
-# ribbons for I(t) per population
-plot_multi_stoch_I(sim_F, probs = mp_ribbon)
-# ribbons for daily incidence per population (per million)
-plot_multi_stoch_incidence(sim_F, per_million = TRUE, probs = mp_ribbon)
+sim_F$params$ribbon_probs <- ribbon_probs
 
-# ---- DASHBOARDS ----
-cat("\n[G] Dashboards\n")
-# Build constant-β comparison for the overlay panel
-det_const <- simulate_sirs_det(
-  n_times = n_times, pop = pop, I_init = I_init,
-  beta = beta, gamma = gamma, omega = omega
-)
-st_const <- simulate_sirs(
-  n_times = n_times, pop = pop, I_init = I_init,
-  beta = beta, gamma = gamma, omega = omega,
-  epsilon = 0, alpha = NULL, n_sims = 200, stochastic = TRUE, seed = 123
-)
+plot_multi(sim_F, which = "R", group_style = "combined")
+plot_multi(sim_F, which = "incidence", group_style = "facet", per_million = TRUE)
 
-# 6-panel dashboard
-plot_dashboard(
-  sim_E,
-  probs = c(0.05, 0.95),
-  per_million = TRUE,
-  main = "Multi-pop deterministic",
-  det_stoch = list(
-    det     = det_const,
-    stoch   = st_const,
-    state   = "incidence",      # or "I"
-    probs   = c(0.10, 0.90),
-    det_col = "#2C7FB8",
-    main    = "Det vs Stoch (constant β)"
-  )
-)
 
-# 9-panel dashboard
-plot_dashboard_v2(
-  sim_F,
-  probs = mp_ribbon,
-  per_million = TRUE,
-  main = "Multi-pop stochastic",
-  det_stoch = list(
-    det     = det_const,
-    stoch   = st_const,
-    state   = "incidence",      # overlay content; use "I" for prevalence
-    probs   = c(0.10, 0.90),
-    det_col = "#2C7FB8",
-    main    = "Det vs Stoch (constant β)"
-  )
+# G) Dashboards — multi-pop
+cat("\n[G] Dashboards — multi-pop \n")
+plots_E <- plot_dashboard(
+  sim           = sim_E,
+  probs         = ribbon_probs, 
+  per_million   = TRUE,
+  group_style   = "combined",
+  pop_cols      = my_pop_cols,
+  show_bands    = FALSE                 
 )
+# Keep only implemented panels
+panels_E <- c("S","I","R","incidence","beta","params")
+p_E <- arrange_dashboard(plots_E[panels_E], layout = c(3,2), collect_legend = TRUE)
+print(p_E)
+
+panels_E2 <- c("S","I","R","incidence")
+p_E2 <- arrange_dashboard(plots_E[panels_E2], layout = c(2,2), collect_legend = TRUE)
+print(p_E2)
+
+plots_F <- plot_dashboard(
+  sim           = sim_F,
+  probs         = ribbon_probs,
+  per_million   = TRUE,
+  group_style   = "facet",
+  pop_cols      = my_pop_cols,
+  show_bands    = TRUE                    # stochastic ribbons visible
+)
+# Keep only implemented panels
+panels_F <- c("S","I","R","incidence","beta","params")
+p_F <- arrange_dashboard(plots_F[panels_F], layout = c(3,2), collect_legend = TRUE)
+print(p_F)
+
+panels_F2 <- c("S","I","R","incidence")
+p_F2 <- arrange_dashboard(plots_F[panels_F2], layout = c(2,2), collect_legend = TRUE)
+print(p_F2)
+
+# H) Single-pop “basic SIR” dashboard example
+cat("\n[H] Single-pop dashboard — basic SIR panel (lines only)\n")
+plots_single <- plot_dashboard(
+  sim           = sim_B,
+  probs         = ribbon_probs,
+  per_million   = FALSE,
+  group_style   = "facet",
+  show_bands    = FALSE                   # deterministic: lines only
+)
+panels_single <- c("sir_basic","incidence","beta","params")
+p_single <- arrange_dashboard(plots_single[panels_single], layout = c(2,2), collect_legend = TRUE)
+print(p_single)
+
+cat("\nDone.\n")
+
+
+stoch_G<- simulate_sirs_stoch(
+  n_times = 180,pop = 100, I_init = 2,
+  beta = 0.2, gamma = 1/30, omega = 1/14,
+  epsilon = 0, alpha = 0.1,
+  n_sims = n_sims, stochastic = TRUE, seed = seed + 1
+)
+stoch_G$params$ribbon_probs <- ribbon_probs
+plot_stoch(stoch_G, which = "SIR")
