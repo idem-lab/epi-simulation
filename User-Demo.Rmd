@@ -127,7 +127,7 @@ stochD <- simulate_sirs_stoch(
 stoch_C$params$ribbon_probs <- ribbon_probs
 
 # plot options: "overlay", "SIR", "incidence", "both"
-plot_stoch(stochD, which = "SIR")   # per_million=FALSE by default
+plot_stoch(stochD, which = "incidence")   # per_million=FALSE by default
 ```
 
 ## E - Multi-population deterministic model
