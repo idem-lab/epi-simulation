@@ -1,10 +1,12 @@
 #' @title Stochastic multi-population SIRS simulator
-#' 
+#'
 #' @description
 #' Simulate a stochastic SIRS model across \eqn{P} subpopulations for `n_times`
 #' days. States are tracked as **counts** per simulation (S/I/R), with optional
 #' reporting noise for cases. Transmission can vary by time and group via
-#' `beta_mat`, and cross-group mixing is controlled by a contact matrix `C`.
+#' `beta_mat`. **No contact matrix is used**; each group’s hazard is
+#' within-group only:
+#' \deqn{\lambda_p(t-1) = \beta_p(t-1)\, I_p(t-1)/N_p + \epsilon_p.}
 #'
 #' @param n_times Integer (\eqn{\ge} 2). Number of days.
 #' @param pop_vec Numeric vector (length `P`, all \eqn{>} 0). Population sizes.
@@ -14,24 +16,19 @@
 #'   giving transmission rates.
 #' @param gamma Numeric in \[0,1]. Daily recovery probability.
 #' @param omega Numeric in \[0,1]. Daily waning probability (R→S).
-#' @param C Numeric matrix `[P x P]`. Contact/mixing weights with rows as receivers
-#'   and columns as sources (`C[g,h]` weights infections from `h` to `g`). If `NULL`,
-#'   uses a matrix of ones.
-#' @param epsilon Numeric scalar or length-`P` vector (\eqn{\ge} 0). Exogenous
-#'   infection pressure added to the hazard.
+#' @param epsilon Numeric scalar or length-`P` vector (\eqn{\ge} 0). Exogenous infection pressure.
 #' @param alpha `NULL`, scalar, or length-`P` vector in \[0,1]. Reporting probability
 #'   used to thin incident infections into observed `cases`.
 #' @param n_sims Integer (\eqn{\ge} 1). Number of independent simulation paths.
-#' @param stochastic Logical. If `TRUE` (default) use binomial draws; otherwise
-#'   use rounded expectations.
+#' @param stochastic Logical. If `TRUE` (default) use binomial draws; otherwise rounded expectations.
 #' @param seed Optional integer. RNG seed for reproducibility.
 #'
-#' @return A list with components:
+#' @return A list with:
 #' \describe{
 #'   \item{time}{Integer vector `1:n_times`.}
-#'   \item{proportions}{Numeric array `[time x sims x P x state]` with `"S"`, `"I"`, `"R"`.}
+#'   \item{proportions}{Numeric array `[time x sims x P x {S,I,R}]`.}
 #'   \item{cases}{Integer array `[time x sims x P]` (daily observed cases).}
-#'   \item{params}{List of inputs used (`beta`, `C`, `epsilon`, `alpha`, etc.).}
+#'   \item{params}{List of inputs used (`beta`, `epsilon`, `alpha`, etc.).}
 #' }
 #'
 #' @examples
@@ -39,28 +36,26 @@
 #' # b1 <- make_beta(120, "seasonal", base = 0.18, amplitude = 0.25, phase = 30)
 #' # b2 <- make_beta(120, "constant", value = 0.16)
 #' # B  <- cbind(b1, b2)
-#' # Cw <- make_contact(P = 2, within = 0.85)
 #' # out <- simulate_sirs_multi_stoch(
 #' #   n_times = 120, pop_vec = c(8e4, 6e4), I_init = c(8, 6),
-#' #   beta_mat = B, gamma = 1/7, omega = 1/60, C = Cw,
+#' #   beta_mat = B, gamma = 1/7, omega = 1/60,
 #' #   epsilon = 1e-4, alpha = c(0.6, 0.6), n_sims = 50, seed = 42
 #' # )
 #'
 #' @importFrom stats rbinom
 #' @export
 simulate_sirs_multi_stoch <- function(
-    n_times   = 365,
-    pop_vec   = c(5e4, 5e4),
-    I_init    = c(10, 10),
-    beta_mat  = NULL,        # scalar | vector(n_times) | matrix[n_times x P]
-    gamma     = 1/7,
-    omega     = 1/30,
-    C         = NULL,        # [P x P], rows=receivers, cols=sources
-    epsilon   = 0,           # scalar or length-P
-    alpha     = NULL,        # NULL or scalar/length-P (for cases only)
-    n_sims    = 100,
+    n_times    = 365,
+    pop_vec    = c(5e4, 5e4),
+    I_init     = c(10, 10),
+    beta_mat   = NULL,        # scalar | vector(n_times) | matrix[n_times x P]
+    gamma      = 1/7,
+    omega      = 1/30,
+    epsilon    = 0,           # scalar or length-P
+    alpha      = NULL,        # NULL or scalar/length-P (for cases only)
+    n_sims     = 100,
     stochastic = TRUE,
-    seed      = NULL
+    seed       = NULL
 ) {
   P <- length(pop_vec)
   stopifnot(n_times >= 2, P >= 1, length(I_init) == P)
@@ -69,11 +64,7 @@ simulate_sirs_multi_stoch <- function(
   stopifnot(is.numeric(omega) && omega >= 0 && omega <= 1)
   if (!is.null(seed)) set.seed(seed)
   
-  # Contact matrix
-  if (is.null(C)) C <- matrix(1, nrow = P, ncol = P)
-  stopifnot(is.matrix(C), nrow(C) == P, ncol(C) == P)
-  
-  # Beta handling
+  # Beta handling → [n_times x P]
   if (is.null(beta_mat)) {
     beta_mat <- matrix(0.16, nrow = n_times, ncol = P)
   } else if (length(beta_mat) == 1) {
@@ -86,7 +77,7 @@ simulate_sirs_multi_stoch <- function(
   if (any(!is.finite(beta_mat)) || any(beta_mat < 0))
     stop("beta_mat must be finite and non-negative.")
   
-  # epsilon/alpha shape
+  # epsilon/alpha shapes
   if (length(epsilon) == 1) epsilon <- rep(epsilon, P)
   if (!is.null(alpha) && length(alpha) == 1) alpha <- rep(alpha, P)
   stopifnot(length(epsilon) == P)
@@ -108,17 +99,14 @@ simulate_sirs_multi_stoch <- function(
   }
   
   for (t in 2:n_times) {
-    # Prevalence by source pop at t-1: [sims x P]
-    I_slice <- I[t - 1, , ]                 # [n_sims x P]
-    prev <- sweep(I_slice, 2, pop_vec, "/") # divide columns by N_p
+    # Prevalence at t-1 per pop (by sim): [n_sims x P]
+    prev <- sweep(I[t - 1, , ], 2, pop_vec, "/")
     
-    # Receiver-weighted prevalence per sim: [sims x P]
-    # C rows=receivers, cols=sources → prev %*% t(C) gives receivers in columns
-    M <- prev %*% t(C)
-    
-    beta_row <- beta_mat[t - 1, ]           # length P
-    lambda_mat <- sweep(M, 2, beta_row, `*`)    # multiply each receiver col by its beta
-    lambda_mat <- sweep(lambda_mat, 2, epsilon, `+`)  # add epsilon_p
+    # Within-group hazard per sim/pop:
+    # lambda_mat[s, p] = beta[t-1, p] * prev[s, p] + epsilon[p]
+    beta_row   <- beta_mat[t - 1, ]      # length P
+    lambda_mat <- sweep(prev, 2, beta_row, `*`)
+    lambda_mat <- sweep(lambda_mat, 2, epsilon, `+`)
     
     if (!stochastic) {
       new_inf <- matrix(0L, nrow = n_sims, ncol = P)
@@ -131,7 +119,8 @@ simulate_sirs_multi_stoch <- function(
         loss_im[, p] <- round(omega * R[t-1, , p])
       }
     } else {
-      p_inf <- 1 - exp(-pr(lambda_mat))     # [sims x P]
+      # Convert hazard to daily probability via 1 - exp(-lambda)
+      p_inf <- 1 - exp(-pmax(lambda_mat, 0))
       new_inf <- matrix(0L, nrow = n_sims, ncol = P)
       new_rec <- matrix(0L, nrow = n_sims, ncol = P)
       loss_im <- matrix(0L, nrow = n_sims, ncol = P)
@@ -148,9 +137,11 @@ simulate_sirs_multi_stoch <- function(
       I[t, , p] <- I[t-1, , p] + new_inf[, p] - new_rec[, p]
       R[t, , p] <- R[t-1, , p] - loss_im[, p] + new_rec[, p]
       
+      # Observed cases via under-reporting alpha (if provided)
       cases[t, , p] <- if (is.null(alpha)) new_inf[, p]
       else stats::rbinom(n_sims, size = new_inf[, p], prob = pr(alpha[p]))
       
+      # Clamp to non-negative counts
       S[t, , p] <- pmax(S[t, , p], 0L)
       I[t, , p] <- pmax(I[t, , p], 0L)
       R[t, , p] <- pmax(R[t, , p], 0L)
@@ -171,10 +162,10 @@ simulate_sirs_multi_stoch <- function(
     proportions = props,
     cases       = cases,
     params      = list(
-      n_times=n_times, pop_vec=pop_vec, I_init=I_init,
-      beta=beta_mat, gamma=gamma, omega=omega,
-      C=C, epsilon=epsilon, alpha=alpha,
-      n_sims=n_sims, stochastic=stochastic, seed=seed
+      n_times = n_times, pop_vec = pop_vec, I_init = I_init,
+      beta = beta_mat, gamma = gamma, omega = omega,
+      epsilon = epsilon, alpha = alpha,
+      n_sims = n_sims, stochastic = stochastic, seed = seed
     )
   )
 }
