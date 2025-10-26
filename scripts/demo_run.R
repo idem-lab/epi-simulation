@@ -126,7 +126,7 @@ plot_multi(sim_E, which = "S", group_style = "combined")
 plot_multi(sim_E, which = "I", group_style = "facet")
 
 # F) Multi-pop stochastic
-cat("\n[F] Multi-pop stochastic (C-free)\n")
+cat("\n[F] Multi-pop stochastic\n")
 sim_F <- simulate_sirs_multi_stoch(
   n_times    = mp_n_times,
   pop_vec    = mp_pops,
