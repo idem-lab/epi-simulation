@@ -93,7 +93,7 @@ simB <- simulate_sirs_det(
   n_times = n_times, pop = pop, I_init = I_init,
   beta = beta_B, gamma = gamma, omega = omega
 )
-# plot options: "overlay", "sir", "incidence", "both_side"
+# plot options: "overlay", "sir", "incidence", "both"
 plot_sir_diag(simB, which = "sir")
 ```
 
@@ -107,7 +107,7 @@ stoch_C <- simulate_sirs_stoch(
 )
 stoch_C$params$ribbon_probs <- ribbon_probs
 
-# plot options: "overlay", "SIR", "incidence", "both_side"
+# plot options: "overlay", "SIR", "incidence", "both"
 plot_stoch(stoch_C, which = "SIR")
 ```
 
@@ -126,8 +126,8 @@ stochD <- simulate_sirs_stoch(
 # prefer explicit vector; plot_stoch should read this if implemented
 stoch_C$params$ribbon_probs <- ribbon_probs
 
-# plot options: "overlay", "SIR", "incidence", "both_side"
-plot_stoch(stochD, which = "incidence")   # per_million=FALSE by default
+# plot options: "overlay", "SIR", "incidence", "both"
+plot_stoch(stochD, which = "SIR")   # per_million=FALSE by default
 ```
 
 ## E - Multi-population deterministic model
@@ -150,7 +150,7 @@ simF <- simulate_sirs_multi_stoch(
   n_times    = mp_n_times,
   pop_vec    = mp_pops,
   I_init     = mp_Iinit,
-  beta_mat   = mp_beta,     # scalar OK; recycled internally
+  beta_mat   = mp_beta,     
   gamma      = mp_gamma,
   omega      = mp_omega,
   epsilon    = mp_epsilon,
