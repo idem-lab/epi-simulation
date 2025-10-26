@@ -1,0 +1,211 @@
+---
+title: "User demo"
+output:
+  html_document:
+    toc: true
+    toc-location: right
+    number_sections: false
+    code_folding: show
+---
+
+Hi, there!  
+This is a demo for all the user inputs you can edit to run the various models and simulations.
+Inside we drafted different sections for each scenario (A to H).
+
+**Sections**
+: A) Deterministic (constant beta)
+: B) Deterministic (seasonal beta)
+: C) Stochastic (constant beta)
+: D) Stochastic (seasonal beta)
+: E) Multi-pop deterministic
+: F) Multi-pop stochastic
+: G) Summary table of simulation results
+: H) Dashboards with self arrangement
+
+## Edit your inputs here
+```{r}
+# ---- EDIT YOUR INPUTS HERE -------------------
+# Common components
+n_times <- 60      # Total days to simulate
+pop     <- 100000  # Population size
+I_init  <- 10      # Initial number of infectious individuals
+beta    <- 0.75    # Transmission rate  
+gamma   <- 1/7     # Recovery rate
+omega   <- 1/30    # Rate of loss of immunity(R -> S)
+
+
+# Seasonal beta (for B, D)
+season_base  <- 0.70   # Base transmission rate
+season_amp   <- 0.25   # Amplitude of seasonal variation (0 ≤ amplitude < 1)
+season_phase <- 30     # Phase shift in days
+
+# Stochastic (C,D,F)
+n_sims   <- 200   # Number of independent simulation runs (columns).
+epsilon  <- 1e-4  # External infection pressure.
+alpha    <- 0.3   # Reporting rate
+seed     <- 42    # Random seed for reproducibility
+
+# Multi-pop (E, F)
+mp_n_times <- 180                     # Total days to simulate
+mp_pops    <- c(100000, 500, 200000)  # Population sizes
+mp_Iinit   <- c(100, 5, 1000)         # Initial infectious individuals
+mp_beta    <- 0.20                    # Transmission rate
+mp_gamma   <- 1/7                     # Recovery rate
+mp_omega   <- 1/30                    # Rate of loss of immunity(R -> S)
+
+# Multi-pop stochastic (F)
+mp_sims    <- 200      # Number of stochastic simulations
+mp_epsilon <- 0        # Noise parameter
+mp_alpha   <- NULL     # Scaling factor for stochasticity
+mp_seed    <- 99       # Random seed for reproducibility
+
+# Customise uncertainty ribbons(Default to 95%)
+ribbon_probs <- c(0.025, 0.975)
+
+# Customise colors for multiple populations
+my_pop_cols <- c("#E41A1C", "#377EB8", "#4DAF4A")
+```
+
+## Load the package
+```{r}
+# library(epi-simulation)
+R.utils::sourceDirectory("R/")
+```
+
+## A - Deterministic model with constant beta
+```{r A-Deterministic}
+simA <- simulate_sirs_det(
+  n_times = n_times, pop = pop, I_init = I_init,
+  beta = beta, gamma = gamma, omega = omega
+)
+
+# plot options: "overlay", "sir", "incidence", "both_side"
+plot_sir_diag(simA, which = "overlay")
+```
+
+## B - Deterministic model with seasonal beta
+```{r}
+beta_B <- make_beta(
+  n_times, mode = "seasonal",
+  base = season_base, amplitude = season_amp, phase = season_phase
+)
+simB <- simulate_sirs_det(
+  n_times = n_times, pop = pop, I_init = I_init,
+  beta = beta_B, gamma = gamma, omega = omega
+)
+# plot options: "overlay", "sir", "incidence", "both_side"
+plot_sir_diag(simB, which = "sir")
+```
+
+## C - Stochastic model with constant beta(Single population)
+```{r}
+stoch_C <- simulate_sirs_stoch(
+  n_times = n_times, pop = pop, I_init = I_init,
+  beta = beta, gamma = gamma, omega = omega,
+  epsilon = epsilon, alpha = alpha,
+  n_sims = n_sims, stochastic = TRUE, seed = seed + 1
+)
+stoch_C$params$ribbon_probs <- ribbon_probs
+
+# plot options: "overlay", "SIR", "incidence", "both_side"
+plot_stoch(stoch_C, which = "SIR")
+```
+
+## D - Stochastic model with seasonal beta(Single population)
+```{r}
+betaD <- make_beta(
+  n_times, mode = "seasonal",
+  base = season_base, amplitude = season_amp, phase = season_phase
+)
+stochD <- simulate_sirs_stoch(
+  n_times = n_times, pop = pop, I_init = I_init,
+  beta = betaD, gamma = gamma, omega = omega,
+  epsilon = epsilon, alpha = alpha,
+  n_sims = n_sims, stochastic = TRUE, seed = seed
+)
+# prefer explicit vector; plot_stoch should read this if implemented
+stoch_C$params$ribbon_probs <- ribbon_probs
+
+# plot options: "overlay", "SIR", "incidence", "both_side"
+plot_stoch(stochD, which = "incidence")   # per_million=FALSE by default
+```
+
+## E - Multi-population deterministic model
+```{r}
+beta_md <- matrix(mp_beta, nrow = mp_n_times, ncol = length(mp_pops))
+simE <- simulate_sirs_multi(
+  n_times = mp_n_times, pop_vec = mp_pops, I_init = mp_Iinit,
+  beta_mat = beta_md, gamma = mp_gamma, omega = mp_omega
+)
+
+# plot options: "S","I", "R", "incidence"
+# group_style: "combined", "facet"
+plot_multi(simE, which = "S", group_style = "combined")
+plot_multi(simE, which = "I", group_style = "facet")
+```
+
+## F - Multi-population stochastic model
+```{r}
+simF <- simulate_sirs_multi_stoch(
+  n_times    = mp_n_times,
+  pop_vec    = mp_pops,
+  I_init     = mp_Iinit,
+  beta_mat   = mp_beta,     # scalar OK; recycled internally
+  gamma      = mp_gamma,
+  omega      = mp_omega,
+  epsilon    = mp_epsilon,
+  alpha      = mp_alpha,
+  n_sims     = mp_sims,
+  stochastic = TRUE,
+  seed       = mp_seed
+)
+simF$params$ribbon_probs <- ribbon_probs
+
+# plot options: "S","I", "R", "incidence"
+# group_style: "combined", "facet"
+plot_multi(simF, which = "I", group_style = "combined")
+```
+
+## G - Summary table of simulation results
+```{r}
+# Change different data frames here to see different summaries
+sumF <- summarize_sim(simF, level = "per_pop")
+```
+
+```{r}
+library(DT)
+
+datatable(
+  sumF,                             # Change the data frame here
+  rownames = FALSE,
+  filter = "top",                   # adds filter boxes to each column
+  options = list(
+    pageLength = 10,
+    lengthMenu = c(10, 25, 50, 100),
+    autoWidth  = TRUE
+  ),
+  class = "compact stripe hover"
+)
+
+```
+
+## H - Dashboards with self arrangement
+```{r warning=FALSE, message=FALSE}
+plot_DB <- plot_dashboard(
+  sim           = simF,           # Try simD for single-pop stochastic
+  probs         = c(0.95),        # Uncertainty ribbons
+  per_million   = TRUE,           # per_million: TRUE, FALSE
+  group_style   = "combined",     # group_style: "combined", "facet"
+  pop_cols      = my_pop_cols,    # Custom population colors
+  show_bands    = FALSE           # Stochastic ribbons visible or not
+)
+
+# plot options: "SIR", S","I", "R", "incidence","beta","params"
+panels_DB <- c("S","I","R","incidence")
+
+# Arrange dashboard(Change layout as needed)
+p_DB <- arrange_dashboard(plot_DB[panels_DB], layout = c(2,2), collect_legend = TRUE)
+
+print(p_DB)
+```
+
