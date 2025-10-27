@@ -1,0 +1,89 @@
+---
+title: "README"
+output: 
+ html_document:
+    code_folding: show 
+---
+
+# SIRS Modeling Simulator
+
+Fast, clear, and reproducible SIRS model simulation for deterministic and stochastic scenarios, including multi-population runs, summary tables, and publication-quality plots.
+
+## What is SIRS model?
+
+The SIRS model is a type of mathematical model used in epidemiology to describe the dynamics of an infectious disease in a population by dividing it into three compartments: **Susceptible**, **Infectious**, and **Recovered**.
+![](pre/images/SIRS.png)
+
+A simple continuous-time form is: 
+$$
+\begin{aligned}
+\frac{dS}{dt} &= -\beta SI + \omega R\\
+\frac{dI}{dt} &=  \beta SI - \gamma I\\
+\frac{dR}{dt} &=  \gamma I - \omega R\\
+\end{aligned}
+$$
+
+where
+: $\beta(t)$ is the transmission rate
+: $\gamma$ is recovery rate
+: $\omega$ rate at which the immune in R becomes susceptible again.(R → S)
+: $N = S + I + R$ is the total population size.
+
+
+## Why do we need epidemic simulation?
+
+# Installation
+
+```{r eval=FALSE}
+
+install.packages("remotes")
+
+remotes::install_github("idem-lab/epi-simulation")
+
+library(epi-sumulation)
+
+```
+
+# What's inside?
+
+| Category | Function(s) | Description |
+|----------------|----------------------|-----------------------------------|
+| **Simulators** | `simulate_sirs_det()` | Deterministic single population. |
+|  | `simulate_sirs_stoch()` | Stochastic single population (many rounds). |
+|  | `simulate_sirs_multi()` | Deterministic multi-population. |
+|  | `simulate_sirs_multi_stoch()` | Stochastic multi-population. |
+| **Plotting** | `plot_sir_diag()` | Single-pop SIR/overlay/incidence views. |
+|  | `plot_stoch()` | Stochastic ribbons/lines & incidence. |
+|  | `plot_multi()` | Multi-pop S/I/R/incidence (combined or faceted). |
+|  | `plot_dashboard()` + `arrange_dashboard()` | Build a multi-panel dashboard. |
+| **Summaries & helpers** | `summarize_sim()` | Headline outbreak metrics (peaks, final sizes, etc.). |
+|  | `make_beta()` | Time-varying β (e.g., seasonal cosine). |
+|  | `to_tidy()` | Coerce outputs to a tidy long table (time, group, sim, state, value). |
+
+# Example
+
+Here are some examples of how to use the package functions. For full example please check the demo it is user-friendly walkthroughs.
+
+```{r echo=FALSE}
+# Wil delete this loading function after turning into package
+R.utils::sourceDirectory("R/")
+```
+
+This is an exmaple for a deterministic single-population SIRS simulation:
+```{r}
+n_times <- 60
+pop <- 100000
+I_init <- 10
+beta <- 0.75
+gamma <- 1/7
+omega <- 1/30
+
+sim_1 <- simulate_sirs_det(n_times, pop, I_init, beta, gamma, omega)
+sim_1$I
+```
+
+# Plotting
+
+```{r}
+plot_sir_diag(sim_1, which = "sir")
+```
