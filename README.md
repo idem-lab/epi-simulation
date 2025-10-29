@@ -1,30 +1,31 @@
-
 # SIRS Modeling Simulator
 
 Fast, clear, and reproducible SIRS model simulation for deterministic and stochastic scenarios, including multi-population runs, summary tables, and publication-quality plots.
 
 ## What is SIRS model?
 
-The SIRS model is a type of mathematical model used in epidemiology to describe the dynamics of an infectious disease in a population by dividing it into three compartments: **Susceptible**, **Infectious**, and **Recovered**.
-![](Presentation/images/SIRS.png)
+The SIRS model is a type of mathematical model used in epidemiology to describe the dynamics of an infectious disease in a population by dividing it into three compartments: **Susceptible**, **Infectious**, and **Recovered**. ![](images/SIRS.png)
 
 A simple continuous-time form is: 
-$$
-\begin{aligned}
+
+$$\begin{aligned}
 \frac{dS}{dt} &= -\beta SI + \omega R\\
 \frac{dI}{dt} &=  \beta SI - \gamma I\\
 \frac{dR}{dt} &=  \gamma I - \omega R\\
-\end{aligned}
-$$
+\end{aligned}$$
 
 where
-: $\beta(t)$ is the transmission rate
-: $\gamma$ is recovery rate
-: $\omega$ rate at which the immune in R becomes susceptible again.(R → S)
-: $N = S + I + R$ is the total population size.
 
+:   $\beta(t)$ is the transmission rate
+
+:   $\gamma$ is recovery rate
+
+:   $\omega$ rate at which the immune in R becomes susceptible again.(R → S)
+
+:   $N = S + I + R$ is the total population size.
 
 ## Why do we need `epi-simulation`?
+
 Covid-19 pandemic has highlighted the importance of epidemiological modeling in understanding and controlling infectious diseases. The SIRS model is a fundamental tool in this field, but implementing it can be complex and time-consuming. The `epi-simulation` package aims to simplify this process by providing a user-friendly interface for simulating SIRS models, allowing researchers and public health officials to quickly generate insights and inform decision-making.
 
 # Installation
@@ -42,7 +43,7 @@ library(epi-sumulation)
 # What's inside?
 
 | Category | Function(s) | Description |
-|----------------|----------------------|-----------------------------------|
+|------------------|---------------------|---------------------------------|
 | **Simulators** | `simulate_sirs_det()` | Deterministic single population. |
 |  | `simulate_sirs_stoch()` | Stochastic single population (many rounds). |
 |  | `simulate_sirs_multi()` | Deterministic multi-population. |
@@ -67,6 +68,7 @@ R.utils::sourceDirectory("R/")
 ```
 
 This is an exmaple for a deterministic single-population SIRS simulation:
+
 ```{r}
 n_times <- 60
 pop <- 100000
