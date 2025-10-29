@@ -1,10 +1,16 @@
 # SIRS Modeling Simulator
 
-Fast, clear, and reproducible SIRS model simulation for deterministic and stochastic scenarios, including multi-population runs, summary tables, and publication-quality plots.
+Fast, clear, and reproducible SIRS simulations for deterministic and stochastic scenarios—supporting multi-population runs and tidy summary tables—with an optional, self-arranging dashboard for exploration and further analysis.
 
 ## What is SIRS model?
 
-The SIRS model is a type of mathematical model used in epidemiology to describe the dynamics of an infectious disease in a population by dividing it into three compartments: **Susceptible**, **Infectious**, and **Recovered**. ![](images/SIRS.png)
+The SIRS model is a type of mathematical model used in epidemiology to describe the dynamics of an infectious disease in a population by dividing it into three compartments: **Susceptible**, **Infectious**, and **Recovered**.<br>
+Susceptible(S) means who have no immunity from the disease.<br>
+
+Infectious(I) means who have the disease and can spread it to susceptibles.<br>
+
+Recovered (R) have recovered from the disease and are immune.
+![](images/SIRS.png)
 
 A simple continuous-time form is:
 
