@@ -6,7 +6,7 @@ Fast, clear, and reproducible SIRS model simulation for deterministic and stocha
 
 The SIRS model is a type of mathematical model used in epidemiology to describe the dynamics of an infectious disease in a population by dividing it into three compartments: **Susceptible**, **Infectious**, and **Recovered**. ![](images/SIRS.png)
 
-A simple continuous-time form is: 
+A simple continuous-time form is:
 
 $$\begin{aligned}
 \frac{dS}{dt} &= -\beta SI + \omega R\\
@@ -14,15 +14,12 @@ $$\begin{aligned}
 \frac{dR}{dt} &=  \gamma I - \omega R\\
 \end{aligned}$$
 
-where
-
+Where
 : $\beta(t)$ is the transmission rate
-
 : $\gamma$ is recovery rate
-
 : $\omega$ rate at which the immune in R becomes susceptible again.(R → S)
-
 : $N = S + I + R$ is the total population size.
+
 
 ## Why do we need `epi-simulation`?
 
