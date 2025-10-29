@@ -1,8 +1,5 @@
 ---
-title: "README"
-output: 
- html_document:
-    code_folding: show 
+output: github_document
 ---
 
 # SIRS Modeling Simulator
@@ -85,8 +82,8 @@ sim_1 <- simulate_sirs_det(n_times, pop, I_init, beta, gamma, omega)
 sim_1$I
 ```
 
-# Plotting
-
 ```{r}
 plot_sir_diag(sim_1, which = "sir")
 ```
+
+For more other examples, please check the `User-Demo.Rmd` file in the repository.
