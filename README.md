@@ -14,26 +14,29 @@ $$\begin{aligned}
 \frac{dR}{dt} &=  \gamma I - \omega R\\
 \end{aligned}$$
 
-Where
-: $\beta(t)$ is the transmission rate
-: $\gamma$ is recovery rate
-: $\omega$ rate at which the immune in R becomes susceptible again.(R → S)
-: $N = S + I + R$ is the total population size.
-
+Where: <br>
+$\beta(t)$ is the transmission rate.<br>
+$\gamma$ is recovery rate.<br>
+$\omega$ rate at which the immune in R becomes susceptible again.(R → S)<br>
+$N = S + I + R$ is the total population size.
 
 ## Why do we need `epi-simulation`?
 
-Covid-19 pandemic has highlighted the importance of epidemiological modeling in understanding and controlling infectious diseases. The SIRS model is a fundamental tool in this field, but implementing it can be complex and time-consuming. The `epi-simulation` package aims to simplify this process by providing a user-friendly interface for simulating SIRS models, allowing researchers and public health officials to quickly generate insights and inform decision-making.
+Covid-19 pandemic has highlighted the importance of epidemiological modeling in understanding and controlling infectious diseases. 
+The SIRS model is a fundamental tool in this field, but implementing it can be complex and time-consuming. 
+The `epi-simulation` package aims to simplify this process by providing a user-friendly interface for simulating SIRS models, 
+allowing researchers and public health officials to quickly generate insights and inform decision-making.
 
 # Installation
+The development version of animbook can be installed from GitHub with:
 
-```{r eval=FALSE}
+```{r}
+install.packages("devtools")
 
-install.packages("remotes")
+devtools::install_github("idem-lab/epi-simulation")
 
-remotes::install_github("idem-lab/epi-simulation")
-
-library(epi-sumulation)
+# Load the functions
+R.utils::sourceDirectory("R/")
 
 ```
 
@@ -57,29 +60,66 @@ library(epi-sumulation)
 
 # Example
 
-Here are some examples of how to use the package functions. For full example please check the demo it is user-friendly walkthroughs.
+Here are some examples of how to use the package functions.<br>
 
-```{r echo=FALSE}
-# Wil delete this loading function after turning into package
-R.utils::sourceDirectory("R/")
-```
+For full example please check the `User-Demo.Rmd` it is user-friendly walkthroughs.<br>
 
-This is an exmaple for a deterministic single-population SIRS simulation:
+Deterministic single-population SIRS simulation:
 
 ```{r}
-n_times <- 60
-pop <- 100000
-I_init <- 10
-beta <- 0.75
-gamma <- 1/7
-omega <- 1/30
+n_times <- 60     # Total days to simulate
+pop <- 100000     # Total population
+I_init <- 10      # Initial number of infectious individuals
+beta <- 0.75      # Transmission rate
+gamma <- 1/7      # Recovery rate
+omega <- 1/30     # Rate of loss of immunity(R -> S)
 
 sim_1 <- simulate_sirs_det(n_times, pop, I_init, beta, gamma, omega)
 sim_1$I
 ```
 
+![](images/op1.png)
+
 ```{r}
+# plot options: "sir", "overlay", "incidence", "both"
 plot_sir_diag(sim_1, which = "sir")
 ```
+
+![](images/op2.png)
+
+Stochastic single-population SIRS simulation with multiple runs:
+
+```{r}
+# Stochastic
+n_sims   <- 200   # Number of independent simulation runs (columns).
+epsilon  <- 0     # External infection pressure.
+alpha    <- 0.1   # Reporting rate
+seed     <- 42    # Random seed for reproducibility
+
+# Customise uncertainty ribbons(Default to 95%)
+ribbon_probs<- c(0.025, 0.975)
+
+stoch_D <- simulate_sirs_stoch(
+  n_times = 80, pop = 1000, I_init = 5,
+  beta = 0.2, gamma = 1/30, omega = 1/14,
+  epsilon = epsilon, alpha = alpha,
+  n_sims = n_sims, stochastic = TRUE, seed = seed
+)
+stoch_D$params$ribbon_probs <- ribbon_probs
+plot_stoch(stoch_D, which = "SIR")
+```
+![](images/op3.png)
+
+Stochastic model will return a long list so we can use `to_tidy()` to convert it to a tidy data frame table for further analysis:<br>
+Time means simulation date (`n_times` input).<br>
+Group means populations size.<br>
+Sim means independent simulation runs (`n_sims` input).<br>
+State means S, I, R compartments.<br>
+Value means the number of individuals in each compartment at each time point for each simulation run.
+
+```{r}
+to_tidy(stoch_D)
+```
+![](images/op4.png)
 
 For more other examples, please check the `User-Demo.Rmd` file in the repository.
