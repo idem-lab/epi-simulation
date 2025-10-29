@@ -60,10 +60,10 @@ sim_A <- simulate_sirs_det(
   n_times = n_times, pop = pop, I_init = I_init,
   beta = beta, gamma = gamma, omega = omega
 )
-plot_sir_diag(sim_A, which = "overlay")
-plot_sir_diag(sim_A, which = "sir")
-plot_sir_diag(sim_A, which = "incidence")
-plot_sir_diag(sim_A, which = "both_side")
+plot_sirs(sim_A, which = "overlay")
+plot_sirs(sim_A, which = "sir")
+plot_sirs(sim_A, which = "incidence")
+plot_sirs(sim_A, which = "both_side")
 
 # B) Deterministic (seasonal beta)
 cat("\n[B] Deterministic (seasonal beta)\n")
@@ -75,10 +75,10 @@ sim_B <- simulate_sirs_det(
   n_times = n_times, pop = pop, I_init = I_init,
   beta = beta_B, gamma = gamma, omega = omega
 )
-plot_sir_diag(sim_B, which = "overlay")
-plot_sir_diag(sim_B, which = "sir")
-plot_sir_diag(sim_B, which = "incidence")
-plot_sir_diag(sim_B, which = "both_side")
+plot_sirs(sim_B, which = "overlay")
+plot_sirs(sim_B, which = "sir")
+plot_sirs(sim_B, which = "incidence")
+plot_sirs(sim_B, which = "both_side")
 
 # C) Stochastic (constant beta) — single pop
 cat("\n[C] Stochastic (constant beta)\n")

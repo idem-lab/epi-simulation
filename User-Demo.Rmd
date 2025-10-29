@@ -21,6 +21,7 @@ Inside we drafted different sections for each scenario (A to H).
 : F) Multi-pop stochastic
 : G) Summary table of simulation results
 : H) Dashboards with self arrangement
+: I) Other helper functions
 
 ## Edit your inputs here
 ```{r}
@@ -80,7 +81,7 @@ simA <- simulate_sirs_det(
 )
 
 # plot options: "overlay", "sir", "incidence", "both_side"
-plot_sir_diag(simA, which = "overlay")
+plot_sirs(simA, which = "overlay")
 ```
 
 ## B - Deterministic model with seasonal beta
@@ -94,7 +95,7 @@ simB <- simulate_sirs_det(
   beta = beta_B, gamma = gamma, omega = omega
 )
 # plot options: "overlay", "sir", "incidence", "both"
-plot_sir_diag(simB, which = "sir")
+plot_sirs(simB, which = "sir")
 ```
 
 ## C - Stochastic model with constant beta(Single population)
@@ -103,7 +104,7 @@ stoch_C <- simulate_sirs_stoch(
   n_times = n_times, pop = pop, I_init = I_init,
   beta = beta, gamma = gamma, omega = omega,
   epsilon = epsilon, alpha = alpha,
-  n_sims = n_sims, stochastic = TRUE, seed = seed + 1
+  n_sims = n_sims, stochastic = TRUE, seed = seed
 )
 stoch_C$params$ribbon_probs <- ribbon_probs
 
@@ -208,4 +209,20 @@ p_DB <- arrange_dashboard(plot_DB[panels_DB], layout = c(2,2), collect_legend = 
 
 print(p_DB)
 ```
+
+## I - Other helper functions
+
+### `to_tidy()`Convert simulation output to a tidy long table
+```{r}
+# Example of Multi-population stochastic model
+tt <- to_tidy(sim_F)   # Change the data frame here
+```
+
+```{r}
+# Filter for specific group and state
+tt <- to_tidy(sim_F)|> 
+  filter(group == "1" & state == "I")
+tt
+```
+
 

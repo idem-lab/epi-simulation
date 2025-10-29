@@ -21,14 +21,14 @@
 #' inc <- pmax(0, round(diff(c(0, I))*1000 + rnorm(length(t), 0, 2)))
 #' sim <- list(time = t, S = S, I = I, R = R, incidence = inc)
 #'
-#' plot_sir_diag(sim, which = "sir")
-#' plot_sir_diag(sim, which = "incidence")
-#' plot_sir_diag(sim, which = "both_side")
-#' plot_sir_diag(sim, which = "overlay")
+#' plot_sirs(sim, which = "sir")
+#' plot_sirs(sim, which = "incidence")
+#' plot_sirs(sim, which = "both_side")
+#' plot_sirs(sim, which = "overlay")
 #'
 #' @importFrom graphics par plot lines legend axis mtext
 #' @export
-plot_sir_diag <- function(
+plot_sirs <- function(
     sim,
     which = c("both_side","overlay","sir","incidence")
 ) {
