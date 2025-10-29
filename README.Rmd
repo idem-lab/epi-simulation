@@ -12,7 +12,7 @@ Fast, clear, and reproducible SIRS model simulation for deterministic and stocha
 ## What is SIRS model?
 
 The SIRS model is a type of mathematical model used in epidemiology to describe the dynamics of an infectious disease in a population by dividing it into three compartments: **Susceptible**, **Infectious**, and **Recovered**.
-![](pre/images/SIRS.png)
+![](Presentation/images/SIRS.png)
 
 A simple continuous-time form is: 
 $$
@@ -30,7 +30,8 @@ where
 : $N = S + I + R$ is the total population size.
 
 
-## Why do we need epidemic simulation?
+## Why do we need `epi-simulation`?
+Covid-19 pandemic has highlighted the importance of epidemiological modeling in understanding and controlling infectious diseases. The SIRS model is a fundamental tool in this field, but implementing it can be complex and time-consuming. The `epi-simulation` package aims to simplify this process by providing a user-friendly interface for simulating SIRS models, allowing researchers and public health officials to quickly generate insights and inform decision-making.
 
 # Installation
 
@@ -57,8 +58,10 @@ library(epi-sumulation)
 |  | `plot_multi()` | Multi-pop S/I/R/incidence (combined or faceted). |
 |  | `plot_dashboard()` + `arrange_dashboard()` | Build a multi-panel dashboard. |
 | **Summaries & helpers** | `summarize_sim()` | Headline outbreak metrics (peaks, final sizes, etc.). |
-|  | `make_beta()` | Time-varying β (e.g., seasonal cosine). |
+|  | `make_beta()` | Create time-varying beta (constant, seasonal). |
+|  | `adjust_beta()` | Scale beta within specified day windows. |
 |  | `to_tidy()` | Coerce outputs to a tidy long table (time, group, sim, state, value). |
+|  | `cumulative_incidence ()` | Cumulative incidence over time. |
 
 # Example
 
