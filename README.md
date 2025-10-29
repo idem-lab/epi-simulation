@@ -16,13 +16,13 @@ $$\begin{aligned}
 
 where
 
-:   $\beta(t)$ is the transmission rate
+: $\beta(t)$ is the transmission rate
 
-:   $\gamma$ is recovery rate
+: $\gamma$ is recovery rate
 
-:   $\omega$ rate at which the immune in R becomes susceptible again.(R → S)
+: $\omega$ rate at which the immune in R becomes susceptible again.(R → S)
 
-:   $N = S + I + R$ is the total population size.
+: $N = S + I + R$ is the total population size.
 
 ## Why do we need `epi-simulation`?
 
