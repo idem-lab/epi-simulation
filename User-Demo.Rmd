@@ -8,7 +8,7 @@ output:
     code_folding: show
 ---
 
-Hi, there!  
+## Hi, there!  
 This is a demo for all the user inputs you can edit to run the various models and simulations.
 Inside we drafted different sections for each scenario (A to H).
 
@@ -19,9 +19,8 @@ Inside we drafted different sections for each scenario (A to H).
 : D) Stochastic (seasonal beta)
 : E) Multi-pop deterministic
 : F) Multi-pop stochastic
-: G) Summary table of simulation results
-: H) Dashboards with self arrangement
-: I) Other helper functions
+: G) Dashboards with self arrangement
+: H) Summaries & helpers functions
 
 ## Edit your inputs here
 ```{r}
@@ -167,7 +166,31 @@ simF$params$ribbon_probs <- ribbon_probs
 plot_multi(simF, which = "I", group_style = "combined")
 ```
 
-## G - Summary table of simulation results
+
+
+## H - Dashboards with self arrangement
+```{r warning=FALSE, message=FALSE}
+plot_DB <- plot_dashboard(
+  sim           = simF,           # Try simD for single-pop stochastic
+  probs         = c(0.95),        # Uncertainty ribbons
+  per_million   = TRUE,           # per_million: TRUE, FALSE
+  group_style   = "combined",     # group_style: "combined", "facet"
+  pop_cols      = my_pop_cols,    # Custom population colors
+  show_bands    = FALSE           # Stochastic ribbons visible or not
+)
+
+# plot options: "SIR", S","I", "R", "incidence","beta","params"
+panels_DB <- c("S","I","R","incidence")
+
+# Arrange dashboard(Change layout as needed)
+p_DB <- arrange_dashboard(plot_DB[panels_DB], layout = c(2,2), collect_legend = TRUE)
+
+print(p_DB)
+```
+
+## I - Summaries & helpers functions
+
+### `summarize_sim` summarize simulation output.
 ```{r}
 # Change different data frames here to see different summaries
 sumF <- summarize_sim(simF, level = "per_pop")
@@ -190,39 +213,52 @@ datatable(
 
 ```
 
-## H - Dashboards with self arrangement
-```{r warning=FALSE, message=FALSE}
-plot_DB <- plot_dashboard(
-  sim           = simF,           # Try simD for single-pop stochastic
-  probs         = c(0.95),        # Uncertainty ribbons
-  per_million   = TRUE,           # per_million: TRUE, FALSE
-  group_style   = "combined",     # group_style: "combined", "facet"
-  pop_cols      = my_pop_cols,    # Custom population colors
-  show_bands    = FALSE           # Stochastic ribbons visible or not
-)
-
-# plot options: "SIR", S","I", "R", "incidence","beta","params"
-panels_DB <- c("S","I","R","incidence")
-
-# Arrange dashboard(Change layout as needed)
-p_DB <- arrange_dashboard(plot_DB[panels_DB], layout = c(2,2), collect_legend = TRUE)
-
-print(p_DB)
-```
-
-## I - Other helper functions
-
-### `to_tidy()`Convert simulation output to a tidy long table
+### `to_tidy()`Convert simulation output to a tidy long table.
 ```{r}
 # Example of Multi-population stochastic model
-tt <- to_tidy(sim_F)   # Change the data frame here
+tt <- to_tidy(simA)   # Change the data frame here
 ```
 
 ```{r}
 # Filter for specific group and state
-tt <- to_tidy(sim_F)|> 
-  filter(group == "1" & state == "I")
-tt
+tt <- to_tidy(simF)|> 
+  dplyr::filter(group == 1, state == "I")
+
+head(tt,10)
 ```
 
+### `make_beta()`Create time-varying beta (constant, seasonal).
+```{r}
+beta_seasonal <- make_beta(
+  n_times = 365,        # Total days
+  mode = "seasonal",    # Options: "constant", "seasonal"
+  base = 0.7,           # Base transmission rate
+  amplitude = 0.25,     # Amplitude of seasonal variation
+  phase = 30            # Phase shift in days
+)
 
+ggplot(data = data.frame(day = 1:365, beta = beta_seasonal), aes(x = day, y = beta)) +
+  geom_line(color = "blue") +
+  labs(title = "Seasonal Beta over Time", x = "Day", y = "Beta") +
+  theme_minimal()
+```
+
+### `adjust_beta`Scale beta within specified day windows.
+```{r}
+B <- adjust_beta(rep(0.2, 365),                 # Initial beta vector
+                 data.frame(start=50, end=80),  # Day windows to adjust
+                 0.7)                           # Scaling factors
+
+ggplot(data = data.frame(day = 1:365, beta = B), aes(x = day, y = beta)) +
+  geom_line(color = "red") +
+  labs(title = "Beta over Time", x = "Day", y = "Beta") +
+  theme_minimal()
+```
+
+### `cumulative_incidence()`Calculate cumulative incidence over time.
+
+```{r}
+ci_F <- cumulative_incidence(simF)
+
+head(ci_F,10)
+```
