@@ -55,7 +55,7 @@ R.utils::sourceDirectory("R/")
 |  | `simulate_sirs_stoch()` | Stochastic single population (many rounds). |
 |  | `simulate_sirs_multi()` | Deterministic multi-population. |
 |  | `simulate_sirs_multi_stoch()` | Stochastic multi-population. |
-| **Plotting** | `plot_sir_diag()` | Single-pop SIR/overlay/incidence views. |
+| **Plotting** | `plot_sirs()` | Single-pop SIR/overlay/incidence views. |
 |  | `plot_stoch()` | Stochastic ribbons/lines & incidence. |
 |  | `plot_multi()` | Multi-pop S/I/R/incidence (combined or faceted). |
 |  | `plot_dashboard()` + `arrange_dashboard()` | Build a multi-panel dashboard. |
