@@ -5,11 +5,12 @@ Fast, clear, and reproducible SIRS simulations for deterministic and stochastic 
 ## What is SIRS model?
 
 The SIRS model is a type of mathematical model used in epidemiology to describe the dynamics of an infectious disease in a population by dividing it into three compartments: **Susceptible**, **Infectious**, and **Recovered**.<br>
-Susceptible(S) means who have no immunity from the disease.<br>
 
-Infectious(I) means who have the disease and can spread it to susceptibles.<br>
+**Susceptible(S)** means who have no immunity from the disease.<br>
 
-Recovered (R) have recovered from the disease and are immune.
+**Infectious(I)** means who have the disease and can spread it to susceptibles.<br>
+
+**Recovered (R)** have recovered from the disease and are immune.
 ![](images/SIRS.png)
 
 A simple continuous-time form is:
@@ -34,7 +35,7 @@ The `epi-simulation` package aims to simplify this process by providing a user-f
 allowing researchers and public health officials to quickly generate insights and inform decision-making.
 
 # Installation
-The development version of animbook can be installed from GitHub with:
+The development version of epi-simulation can be installed from GitHub with:
 
 ```{r}
 install.packages("devtools")
@@ -112,6 +113,8 @@ stoch_D <- simulate_sirs_stoch(
   n_sims = n_sims, stochastic = TRUE, seed = seed
 )
 stoch_D$params$ribbon_probs <- ribbon_probs
+
+# plot options: "overlay", "SIR", "incidence", "both"
 plot_stoch(stoch_D, which = "SIR")
 ```
 ![](images/op3.png)
