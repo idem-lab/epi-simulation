@@ -1,4 +1,4 @@
-#' Plot a dashboard of SIRS simulation panels
+#' @title Plot a dashboard of SIRS simulation panels
 #'
 #' @description
 #' Builds a **dashboard** of ggplot panels for SIRS simulations and returns them
@@ -376,7 +376,7 @@ plot_dashboard <- function(sim,
   )
 }
 
-#' Arrange dashboard panels
+#' @title Arrange dashboard panels
 #'
 #' @description
 #' Helper to arrange a list of ggplot panels with optional legend collection.
