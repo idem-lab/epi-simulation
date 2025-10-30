@@ -1,282 +1,218 @@
-# ============================================================
-# dashboard.R — ggplot list + arranger (no contact matrix)
-# Fixed SIR colours; det/stoch-aware; P=1 friendly; prints parameters
-# Auto-coerces sim shapes; returns a named list of ggplots
-# ============================================================
-# Overview
-# - This file builds a *dashboard* of ggplots for SIRS simulations and returns
-#   them as a named list (so you can arrange them with patchwork).
-# - It auto-detects deterministic (matrices) vs stochastic (arrays) outputs
-#   and gracefully handles single- and multi-population cases.
-# - It also prints a compact parameter summary to the console and includes a
-#   "Parameters" plot panel for static reporting.
-#
-# Expected shapes
-# - Deterministic: S/I/R/Incidence as [T x P] matrices (P can be 1)
-# - Stochastic:   proportions [T x sims x P x state], cases [T x sims x P]
-# - Time vector:  sim$time of length T
-#
-# Key panels returned
-#   S, I, R          — ribbon (stoch) + mean +/or deterministic line(s)
-#   incidence        — incidence per-pop; optional per-million scaling
-#   beta             — β(t) as vector or matrix
-#   peak_I           — (TODO) peak infected per pop (det) or mean + quantile bars (stoch)
-#   stoch_mag        — (TODO) average ribbon width for I (how wide the uncertainty is)
-#   det_vs_stoch     — overlay: deterministic vs stochastic (I or incidence)
-#   sir_basic        — single-pop S/I/R in one axes when P = 1
-#   params           — static text panel of parameters
-#
-# Usage (minimal)
-#   ribbon_probs <- c(0.025, 0.975)
-#   plots <- plot_dashboard(sim, probs = ribbon_probs, per_million = TRUE)
-#   arrange_dashboard(plots[c("params","I","incidence","beta","det_vs_stoch")], c(2,3))
-
-#' @importFrom stats quantile
-NULL
-
-`%||%` <- function(x, y) if (is.null(x)) y else x
-
-# ---------- helpers & palettes ----------
-.pop_cols <- function(P) {
-  c("#3B528B", "#5DC863", "#FDE725", "#21918C", "#440154", "#F8961E", "#58A4B0")[seq_len(min(P,7))]
-}
-STATE_COLS <- c(S = "#0072B2", I = "#CC79A7", R = "#009E73")
-
-.alpha <- function(cols, a = 0.25) {
-  if (length(cols)==1L) grDevices::adjustcolor(cols, a) else vapply(cols, grDevices::adjustcolor, "", alpha.f=a)
-}
-.not_blank_df <- function(df) !is.null(df) && is.data.frame(df) && nrow(df)>0
-
-.normalize_pop_names <- function(P, pop_names=NULL){
-  if (is.null(pop_names)) return(paste0("Pop ", seq_len(P)))
-  if (length(pop_names)==P) return(pop_names)
-  warning(sprintf("Length of pop_names (%d) != P (%d); using defaults.", length(pop_names), P))
-  paste0("Pop ", seq_len(P))
-}
-
-# Normalize probs; default to 95% as a vector c(0.025, 0.975).
-# (Still accepts a single number p and converts to c(1-p, p) if passed.)
-.norm_probs <- function(probs){
-  if (missing(probs) || is.null(probs)) return(c(0.025, 0.975))
-  stopifnot(is.numeric(probs), all(is.finite(probs)))
-  if (length(probs)==1L) {
-    p <- as.numeric(probs); stopifnot(p>0, p<1)
-    return(c(1-p, p))
-  }
-  stopifnot(length(probs)>=2)
-  sort(probs[1:2])
-}
-
-# ---------- AUTO-COERCION ----------
-.to_mat_lenT <- function(x,T){
-  if (is.null(x)) return(NULL)
-  if (is.matrix(x)){ stopifnot(nrow(x)==T); return(x) }
-  x <- as.numeric(x); stopifnot(length(x)==T); matrix(x, ncol=1)
-}
-
-.ensure_4d_proportions <- function(prop,T){
-  if (is.null(prop)) return(NULL)
-  d <- dim(prop)
-  if (length(d)==4L){
-    stopifnot(d[1]==T)
-    dn <- dimnames(prop)
-    if (is.null(dn) || is.null(dn[[4]])){
-      k <- d[4]; labs <- c("S","I","R","X","Y","Z")[seq_len(k)]
-      dimnames(prop) <- if (is.null(dn)) list(NULL,NULL,NULL,labs) else { dn[[4]] <- labs; dn }
-    }
-    return(prop)
-  }
-  if (length(d)==3L){
-    stopifnot(d[1]==T)
-    k <- d[3]; labs <- dimnames(prop); st <- if (!is.null(labs)) labs[[3]] else NULL
-    if (is.null(st)) st <- c("S","I","R")[seq_len(k)]
-    array(prop, dim=c(d[1], d[2], 1L, k), dimnames=list(NULL,NULL,NULL,st))
-  } else stop("`proportions` must be 3D [T x sims x state] or 4D [T x sims x pop x state].")
-}
-
-.ensure_3d_cases <- function(cases,T){
-  if (is.null(cases)) return(NULL)
-  d <- dim(cases)
-  if (length(d)==3L){ stopifnot(d[1]==T); return(cases) }
-  if (length(d)==2L){ stopifnot(d[1]==T); return(array(cases, dim=c(d[1], d[2], 1L))) }
-  stop("`cases` must be 2D [T x sims] or 3D [T x sims x pop].")
-}
-
-.coerce_sim_for_dashboard <- function(sim){
-  stopifnot(!is.null(sim$time))
-  T <- length(sim$time)
-  S <- .to_mat_lenT(sim$S,T); I <- .to_mat_lenT(sim$I,T); R <- .to_mat_lenT(sim$R,T); Inc <- .to_mat_lenT(sim$incidence,T)
-  prop <- .ensure_4d_proportions(sim$proportions,T)
-  cases<- .ensure_3d_cases(sim$cases,T)
-  P_det <- suppressWarnings(max(c(ncol(S), ncol(I), ncol(R), ncol(Inc)), na.rm=TRUE)); if (!is.finite(P_det)) P_det <- NA_integer_
-  P_sto <- if (!is.null(prop)) dim(prop)[3] else NA_integer_
-  if (!is.na(P_sto) && !is.na(P_det) && P_det!=P_sto){
-    if (P_det==1 && P_sto>1){
-      if (!is.null(S))   S   <- matrix(S[,1],   T, P_sto)
-      if (!is.null(I))   I   <- matrix(I[,1],   T, P_sto)
-      if (!is.null(R))   R   <- matrix(R[,1],   T, P_sto)
-      if (!is.null(Inc)) Inc <- matrix(Inc[,1], T, P_sto)
-      P_det <- P_sto
-    } else if (P_sto==1 && P_det>1){
-      prop  <- array(prop,  dim=c(T, dim(prop)[2],  P_det, dim(prop)[4])); for (p in seq_len(P_det)) prop[,,p,] <- prop[,,1,]
-      cases <- array(cases, dim=c(T, dim(cases)[2], P_det));              for (p in seq_len(P_det)) cases[,,p]   <- cases[,,1]
-      P_sto <- P_det
-    } else stop(sprintf("Population mismatch (det P=%s vs stoch P=%s).", P_det, P_sto))
-  }
-  P <- if (!is.na(P_det)) P_det else if (!is.na(P_sto)) P_sto else 1L
-  params <- sim$params %||% list()
-  params$pop_vec   <- if (is.null(params$pop_vec) || length(params$pop_vec)!=P) rep(1,P) else params$pop_vec
-  params$pop_names <- .normalize_pop_names(P, params$pop_names)
-  params$beta      <- params$beta %||% NULL
-  list(time=sim$time, S=S, I=I, R=R, incidence=Inc, proportions=prop, cases=cases, params=params)
-}
-
-# ---------- LONG-FORM melts ----------
-.melt_mat <- function(mat,time,value,pop_names=NULL){
-  if (is.null(mat)) return(NULL)
-  stopifnot(is.matrix(mat), nrow(mat)==length(time))
-  T <- nrow(mat); P <- ncol(mat)
-  tibble::tibble(
-    time = rep(time, times=P),
-    pop  = factor(rep(seq_len(P), each=T), labels=pop_names %||% paste0("Pop ", seq_len(P))),
-    !!value := as.vector(mat)
-  )
-}
-
-# Default 95% band as vector c(0.025, 0.975)
-.melt_band <- function(arr,time,probs=c(0.025, 0.975),per_million=FALSE,pop_size=NULL,pop_names=NULL){
-  probs <- .norm_probs(probs)
-  stopifnot(length(dim(arr))==3, dim(arr)[1]==length(time))
-  T <- dim(arr)[1]; P <- dim(arr)[3]
-  qL <- apply(arr, c(1,3), stats::quantile, probs[1], na.rm=TRUE)
-  qU <- apply(arr, c(1,3), stats::quantile, probs[2], na.rm=TRUE)
-  mu <- apply(arr, c(1,3), mean, na.rm=TRUE)
-  if (per_million && !is.null(pop_size)) {
-    scale <- matrix(pop_size/1e6, nrow=T, ncol=P, byrow=TRUE)
-    mu <- mu/scale; qL <- qL/scale; qU <- qU/scale
-  }
-  tibble::tibble(
-    time = rep(time, times=P),
-    pop  = factor(rep(seq_len(P), each=T), labels=pop_names %||% paste0("Pop ", seq_len(P))),
-    mean = as.vector(mu),
-    qL   = as.vector(qL),
-    qU   = as.vector(qU)
-  )
-}
-
-# ---- console helper ----
-.print_params <- function(lines_vec){
-  if (requireNamespace("cli", quietly=TRUE)) { cli::cli_h2("Simulation parameters"); cli::cli_ul(lines_vec) }
-  else { cat("\n=== Simulation parameters ===\n"); cat(paste0(" - ", lines_vec, "\n"), sep="") }
-}
-
-# ---------- panel builders ----------
-.build_SIR_panel <- function(state_name, det_df, band_df, ylab, P, facet_cols=2,
-                             group_style=c("facet","combined"), cols=NULL, show_bands=TRUE){
-  stopifnot(state_name %in% c("S","I","R"))
-  group_style <- match.arg(group_style)
-  state_col <- unname(STATE_COLS[[state_name]])
-  single_pop <- (P==1)
-  
-  if (group_style=="combined" && !single_pop){
-    p <- ggplot2::ggplot()
-    if (.not_blank_df(det_df)) {
-      p <- p + ggplot2::geom_line(data=det_df, ggplot2::aes(time, .data[[state_name]], color=pop), linewidth=0.9) +
-        ggplot2::scale_color_manual(values=cols, drop=FALSE, name="Population")
-    } else if (.not_blank_df(band_df)) {
-      p <- p + ggplot2::geom_line(data=band_df, ggplot2::aes(time, mean, color=pop), linewidth=0.9) +
-        ggplot2::scale_color_manual(values=cols, drop=FALSE, name="Population")
-    }
-    return(p + ggplot2::labs(title=paste0(state_name,"(t)"), x="Day", y=ylab) +
-             ggplot2::theme_minimal(base_size=11) +
-             ggplot2::theme(plot.title=ggplot2::element_text(hjust=0.5)))
-  }
-  
-  p <- ggplot2::ggplot()
-  if (.not_blank_df(band_df)) {
-    if (show_bands) {
-      p <- p + ggplot2::geom_ribbon(data=band_df, ggplot2::aes(time, ymin=qL, ymax=qU),
-                                    inherit.aes=FALSE, fill=grDevices::adjustcolor(state_col, 0.25))
-    }
-    p <- p + ggplot2::geom_line(data=band_df, ggplot2::aes(time, mean, group=pop),
-                                inherit.aes=FALSE, linewidth=0.9, color=state_col)
-  }
-  if (.not_blank_df(det_df)) {
-    p <- p + ggplot2::geom_line(data=det_df, ggplot2::aes(time, .data[[state_name]]),
-                                inherit.aes=FALSE, linewidth=0.9, color=state_col)
-  }
-  if (!single_pop && (.not_blank_df(band_df) || .not_blank_df(det_df))) {
-    p <- p + ggplot2::facet_wrap(~pop, ncol=facet_cols)
-  }
-  p + ggplot2::labs(title=paste0(state_name,"(t)"), x="Day", y=ylab) +
-    ggplot2::theme_minimal(base_size=11) +
-    ggplot2::theme(plot.title=ggplot2::element_text(hjust=0.5))
-}
-
-.build_overlay_detstoch <- function(state=c("I","incidence"), det_df, band_df, P, cols,
-                                    det_col="#0072B2", title="Det vs Stoch", facet_cols=2, show_bands=TRUE){
-  state <- match.arg(state)
-  single_pop <- (P==1)
-  yvar <- if (state=="I") "I" else "cases"
-  if ((is.null(band_df) || nrow(band_df)==0) && (is.null(det_df) || nrow(det_df)==0)) {
-    return(ggplot2::ggplot() + ggplot2::theme_void() + ggplot2::labs(title=paste(title,"(no data)")))
-  }
-  if (single_pop){
-    p <- ggplot2::ggplot()
-    if (!is.null(band_df) && nrow(band_df)>0){
-      if (show_bands){
-        p <- p + ggplot2::geom_ribbon(data=band_df, ggplot2::aes(time, ymin=qL, ymax=qU, fill="Stochastic band"), alpha=0.25)
-      }
-      p <- p + ggplot2::geom_line(data=band_df, ggplot2::aes(time, mean, color="Stochastic mean"), linewidth=0.9)
-    }
-    if (!is.null(det_df) && nrow(det_df)>0){
-      p <- p + ggplot2::geom_line(data=det_df, ggplot2::aes(time, .data[[yvar]], color="Deterministic"), linewidth=0.9)
-    }
-    return(p +
-             ggplot2::scale_fill_manual(values=c("Stochastic band"=grDevices::adjustcolor("grey50",0.25)), name=NULL) +
-             ggplot2::scale_color_manual(values=c("Stochastic mean"="black","Deterministic"=det_col), name=NULL) +
-             ggplot2::labs(title=title, x="Day", y=if (state=="I") "I proportion" else "Daily cases") +
-             ggplot2::theme_minimal(base_size=11) +
-             ggplot2::theme(plot.title=ggplot2::element_text(hjust=0.5)))
-  } else {
-    p <- ggplot2::ggplot()
-    if (!is.null(band_df) && nrow(band_df)>0){
-      if (show_bands){
-        p <- p + ggplot2::geom_ribbon(data=band_df, ggplot2::aes(time, ymin=qL, ymax=qU),
-                                      fill=grDevices::adjustcolor("grey50",0.25))
-      }
-      p <- p + ggplot2::geom_line(data=band_df, ggplot2::aes(time, mean), color="black", linewidth=0.7)
-    }
-    if (!is.null(det_df) && nrow(det_df)>0){
-      p <- p + ggplot2::geom_line(data=det_df, ggplot2::aes(time, .data[[yvar]], color=pop), linewidth=0.9)
-    }
-    if (.not_blank_df(band_df) || .not_blank_df(det_df)) p <- p + ggplot2::facet_wrap(~pop, ncol=facet_cols)
-    p + ggplot2::scale_color_manual(values=cols, drop=FALSE, name="Population") +
-      ggplot2::labs(title=title, x="Day", y=if (state=="I") "I proportion" else "Daily cases") +
-      ggplot2::theme_minimal(base_size=11) +
-      ggplot2::theme(plot.title=ggplot2::element_text(hjust=0.5))
-  }
-}
-
-# ---------- core API ----------
+#' Plot a dashboard of SIRS simulation panels
+#'
+#' @description
+#' Builds a **dashboard** of ggplot panels for SIRS simulations and returns them
+#' as a **named list of ggplots** (arrange with [arrange_dashboard()]). The function
+#' auto-detects deterministic vs stochastic outputs and handles single- and
+#' multi-population cases.
+#'
+#' @param sim A simulation result list with `time` and any of:
+#'   deterministic matrices `S`, `I`, `R`, `incidence`; and/or stochastic arrays
+#'   `proportions` `[T × sims × P × state]`, `cases` `[T × sims × P]`. Optional
+#'   `sim$params` may include `pop_vec`, `pop_names`, `beta`, `gamma`, `omega`,
+#'   `epsilon`, `alpha`, `n_sims`, `stochastic`.
+#' @param probs Numeric; quantile band for stochastic ribbons. Either length-2
+#'   `c(L, U)` or single number `p` (interpreted as `c(1 - p, p)`). Default `c(0.025, 0.975)`.
+#' @param per_million Logical; if `TRUE`, scales incidence by population and reports
+#'   **per-million** values (requires `sim$params$pop_vec`). Default `FALSE`.
+#' @param title Character; overall dashboard title (used in some panel labels). Default `"Dashboard"`.
+#' @param group_style Character; `"facet"` (default) faceted by population, or `"combined"` to draw
+#'   populations in a single axis (for S/I/R panels).
+#' @param pop_cols Optional character vector of length ≥ `P` for population colours. If `NULL`, a
+#'   sensible palette is chosen automatically.
+#' @param show_bands Logical; show or hide quantile ribbons (still draws means). Default `TRUE`.
+#'
+#' @return A **named list** of ggplot objects:
+#' `list(S, I, R, incidence, beta, SIR, params)`.
+#'
+#' @seealso [arrange_dashboard()] to arrange the returned plots with patchwork.
+#'
+#' @export
 plot_dashboard <- function(sim,
-                           probs = c(0.025, 0.975),  # default 95% as vector
+                           probs = c(0.025, 0.975),
                            per_million = FALSE,
                            title = "Dashboard",
-                           overlay_state = c("I","incidence"),
-                           overlay_probs = NULL,
-                           overlay_det_col = "#0072B2",
-                           overlay_title   = "Det vs Stoch (overlay)",
                            group_style = c("facet","combined"),
                            pop_cols = NULL,
                            show_bands = TRUE){
   if (!requireNamespace("ggplot2", quietly=TRUE)) stop("plot_dashboard() needs {ggplot2}.")
   group_style  <- match.arg(group_style)
-  overlay_state<- match.arg(overlay_state)
   
-  # normalize probs (accept c(L,U) *or* single number p)
+  # ---------- helpers ----------
+  `%||%` <- function(x, y) if (is.null(x)) y else x
+  
+  .pop_cols <- function(P) {
+    c("#3B528B", "#5DC863", "#FDE725", "#21918C", "#440154", "#F8961E", "#58A4B0")[seq_len(min(P,7))]
+  }
+  STATE_COLS <- c(S = "#0072B2", I = "#CC79A7", R = "#009E73")
+  
+  .alpha <- function(cols, a = 0.25) {
+    if (length(cols)==1L) grDevices::adjustcolor(cols, a) else vapply(cols, grDevices::adjustcolor, "", alpha.f=a)
+  }
+  .not_blank_df <- function(df) !is.null(df) && is.data.frame(df) && nrow(df)>0
+  
+  .normalize_pop_names <- function(P, pop_names=NULL){
+    if (is.null(pop_names)) return(paste0("Pop ", seq_len(P)))
+    if (length(pop_names)==P) return(pop_names)
+    warning(sprintf("Length of pop_names (%d) != P (%d); using defaults.", length(pop_names), P))
+    paste0("Pop ", seq_len(P))
+  }
+  
+  .norm_probs <- function(probs){
+    if (missing(probs) || is.null(probs)) return(c(0.025, 0.975))
+    stopifnot(is.numeric(probs), all(is.finite(probs)))
+    if (length(probs)==1L) {
+      p <- as.numeric(probs); stopifnot(p>0, p<1)
+      return(c(1-p, p))
+    }
+    stopifnot(length(probs)>=2)
+    sort(probs[1:2])
+  }
   probs <- .norm_probs(probs)
   
+  .to_mat_lenT <- function(x,T){
+    if (is.null(x)) return(NULL)
+    if (is.matrix(x)){ stopifnot(nrow(x)==T); return(x) }
+    x <- as.numeric(x); stopifnot(length(x)==T); matrix(x, ncol=1)
+  }
+  
+  .ensure_4d_proportions <- function(prop,T){
+    if (is.null(prop)) return(NULL)
+    d <- dim(prop)
+    if (length(d)==4L){
+      stopifnot(d[1]==T)
+      dn <- dimnames(prop)
+      if (is.null(dn) || is.null(dn[[4]])){
+        k <- d[4]; labs <- c("S","I","R","X","Y","Z")[seq_len(k)]
+        dimnames(prop) <- if (is.null(dn)) list(NULL,NULL,NULL,labs) else { dn[[4]] <- labs; dn }
+      }
+      return(prop)
+    }
+    if (length(d)==3L){
+      stopifnot(d[1]==T)
+      k <- d[3]; labs <- dimnames(prop); st <- if (!is.null(labs)) labs[[3]] else NULL
+      if (is.null(st)) st <- c("S","I","R")[seq_len(k)]
+      array(prop, dim=c(d[1], d[2], 1L, k), dimnames=list(NULL,NULL,NULL,st))
+    } else stop("`proportions` must be 3D [T x sims x state] or 4D [T x sims x pop x state].")
+  }
+  
+  .ensure_3d_cases <- function(cases,T){
+    if (is.null(cases)) return(NULL)
+    d <- dim(cases)
+    if (length(d)==3L){ stopifnot(d[1]==T); return(cases) }
+    if (length(d)==2L){ stopifnot(d[1]==T); return(array(cases, dim=c(d[1], d[2], 1L))) }
+    stop("`cases` must be 2D [T x sims] or 3D [T x sims x pop].")
+  }
+  
+  .coerce_sim_for_dashboard <- function(sim){
+    stopifnot(!is.null(sim$time))
+    T <- length(sim$time)
+    S <- .to_mat_lenT(sim$S,T); I <- .to_mat_lenT(sim$I,T); R <- .to_mat_lenT(sim$R,T); Inc <- .to_mat_lenT(sim$incidence,T)
+    prop <- .ensure_4d_proportions(sim$proportions,T)
+    cases<- .ensure_3d_cases(sim$cases,T)
+    P_det <- suppressWarnings(max(c(ncol(S), ncol(I), ncol(R), ncol(Inc)), na.rm=TRUE)); if (!is.finite(P_det)) P_det <- NA_integer_
+    P_sto <- if (!is.null(prop)) dim(prop)[3] else NA_integer_
+    if (!is.na(P_sto) && !is.na(P_det) && P_det!=P_sto){
+      if (P_det==1 && P_sto>1){
+        if (!is.null(S))   S   <- matrix(S[,1],   T, P_sto)
+        if (!is.null(I))   I   <- matrix(I[,1],   T, P_sto)
+        if (!is.null(R))   R   <- matrix(R[,1],   T, P_sto)
+        if (!is.null(Inc)) Inc <- matrix(Inc[,1], T, P_sto)
+        P_det <- P_sto
+      } else if (P_sto==1 && P_det>1){
+        prop  <- array(prop,  dim=c(T, dim(prop)[2],  P_det, dim(prop)[4])); for (p in seq_len(P_det)) prop[,,p,] <- prop[,,1,]
+        cases <- array(cases, dim=c(T, dim(cases)[2], P_det));              for (p in seq_len(P_det)) cases[,,p]   <- cases[,,1]
+        P_sto <- P_det
+      } else stop(sprintf("Population mismatch (det P=%s vs stoch P=%s).", P_det, P_sto))
+    }
+    P <- if (!is.na(P_det)) P_det else if (!is.na(P_sto)) P_sto else 1L
+    params <- sim$params %||% list()
+    params$pop_vec   <- if (is.null(params$pop_vec) || length(params$pop_vec)!=P) rep(1,P) else params$pop_vec
+    params$pop_names <- .normalize_pop_names(P, params$pop_names)
+    params$beta      <- params$beta %||% NULL
+    list(time=sim$time, S=S, I=I, R=R, incidence=Inc, proportions=prop, cases=cases, params=params)
+  }
+  
+  .melt_mat <- function(mat,time,value,pop_names=NULL){
+    if (is.null(mat)) return(NULL)
+    stopifnot(is.matrix(mat), nrow(mat)==length(time))
+    T <- nrow(mat); P <- ncol(mat)
+    tibble::tibble(
+      time = rep(time, times=P),
+      pop  = factor(rep(seq_len(P), each=T), labels=pop_names %||% paste0("Pop ", seq_len(P))),
+      !!value := as.vector(mat)
+    )
+  }
+  
+  .melt_band <- function(arr,time,probs=c(0.025, 0.975),per_million=FALSE,pop_size=NULL,pop_names=NULL){
+    probs <- .norm_probs(probs)
+    stopifnot(length(dim(arr))==3, dim(arr)[1]==length(time))
+    T <- dim(arr)[1]; P <- dim(arr)[3]
+    qL <- apply(arr, c(1,3), stats::quantile, probs[1], na.rm=TRUE)
+    qU <- apply(arr, c(1,3), stats::quantile, probs[2], na.rm=TRUE)
+    mu <- apply(arr, c(1,3), mean, na.rm=TRUE)
+    if (per_million && !is.null(pop_size)) {
+      scale <- matrix(pop_size/1e6, nrow=T, ncol=P, byrow=TRUE)
+      mu <- mu/scale; qL <- qL/scale; qU <- qU/scale
+    }
+    tibble::tibble(
+      time = rep(time, times=P),
+      pop  = factor(rep(seq_len(P), each=T), labels=pop_names %||% paste0("Pop ", seq_len(P))),
+      mean = as.vector(mu),
+      qL   = as.vector(qL),
+      qU   = as.vector(qU)
+    )
+  }
+  
+  .print_params <- function(lines_vec){
+    if (requireNamespace("cli", quietly=TRUE)) { cli::cli_h2("Simulation parameters"); cli::cli_ul(lines_vec) }
+    else { cat("\n=== Simulation parameters ===\n"); cat(paste0(" - ", lines_vec, "\n"), sep="") }
+  }
+  
+  .build_SIR_panel <- function(state_name, det_df, band_df, ylab, P, facet_cols=2,
+                               group_style=c("facet","combined"), cols=NULL, show_bands=TRUE){
+    stopifnot(state_name %in% c("S","I","R"))
+    group_style <- match.arg(group_style)
+    STATE_COLS <- c(S = "#0072B2", I = "#CC79A7", R = "#009E73")
+    state_col <- unname(STATE_COLS[[state_name]])
+    single_pop <- (P==1)
+    
+    if (group_style=="combined" && !single_pop){
+      p <- ggplot2::ggplot()
+      if (.not_blank_df(det_df)) {
+        p <- p + ggplot2::geom_line(data=det_df, ggplot2::aes(time, .data[[state_name]], color=pop), linewidth=0.9) +
+          ggplot2::scale_color_manual(values=cols, drop=FALSE, name="Population")
+      } else if (.not_blank_df(band_df)) {
+        p <- p + ggplot2::geom_line(data=band_df, ggplot2::aes(time, mean, color=pop), linewidth=0.9) +
+          ggplot2::scale_color_manual(values=cols, drop=FALSE, name="Population")
+      }
+      return(p + ggplot2::labs(title=paste0(state_name,"(t)"), x="Day", y=ylab) +
+               ggplot2::theme_minimal(base_size=11) +
+               ggplot2::theme(plot.title=ggplot2::element_text(hjust=0.5)))
+    }
+    
+    p <- ggplot2::ggplot()
+    if (.not_blank_df(band_df)) {
+      if (show_bands) {
+        p <- p + ggplot2::geom_ribbon(data=band_df, ggplot2::aes(time, ymin=qL, ymax=qU),
+                                      inherit.aes=FALSE, fill=grDevices::adjustcolor(state_col, 0.25))
+      }
+      p <- p + ggplot2::geom_line(data=band_df, ggplot2::aes(time, mean, group=pop),
+                                  inherit.aes=FALSE, linewidth=0.9, color=state_col)
+    }
+    if (.not_blank_df(det_df)) {
+      p <- p + ggplot2::geom_line(data=det_df, ggplot2::aes(time, .data[[state_name]]),
+                                  inherit.aes=FALSE, linewidth=0.9, color=state_col)
+    }
+    if (!single_pop && (.not_blank_df(band_df) || .not_blank_df(det_df))) {
+      p <- p + ggplot2::facet_wrap(~pop, ncol=facet_cols)
+    }
+    p + ggplot2::labs(title=paste0(state_name,"(t)"), x="Day", y=ylab) +
+      ggplot2::theme_minimal(base_size=11) +
+      ggplot2::theme(plot.title=ggplot2::element_text(hjust=0.5))
+  }
+  
+  # ---------- coerce input ----------
   sim  <- .coerce_sim_for_dashboard(sim)
   time <- sim$time
   has_det <- !is.null(sim$I) && is.matrix(sim$I)
@@ -292,6 +228,7 @@ plot_dashboard <- function(sim,
   inc_lab <- if (per_million) "Daily cases (per million)" else "Daily cases"
   s_lab <- "S proportion"; i_lab <- "I proportion"; r_lab <- "R proportion"
   
+  # Deterministic
   S_det <- if (has_det) .melt_mat(sim$S, time, "S", pop_names) else NULL
   I_det <- if (has_det) .melt_mat(sim$I, time, "I", pop_names) else NULL
   R_det <- if (has_det) .melt_mat(sim$R, time, "R", pop_names) else NULL
@@ -301,6 +238,7 @@ plot_dashboard <- function(sim,
     Inc_det <- .melt_mat(inc_mat, time, "cases", pop_names)
   }
   
+  # Stochastic ribbons
   I_band <- Inc_band <- S_band <- R_band <- NULL
   if (has_sto) {
     .get_state_3d <- function(prop4, state){
@@ -319,7 +257,7 @@ plot_dashboard <- function(sim,
     Inc_band <- .melt_band(cases_a, time, probs, per_million, pops, pop_names)
   }
   
-  # ---- parameters panel (static text) ----
+  # ---- parameters panel ----
   p <- sim$params
   params_plot <- {
     line <- function(lbl,val) sprintf("%s: %s", lbl, val)
@@ -426,37 +364,32 @@ plot_dashboard <- function(sim,
     } else ggplot2::ggplot() + ggplot2::theme_void() + ggplot2::labs(title=expression(beta*"(t) shape mismatch"))
   }
   
-  # Det vs Stoch overlay
-  plt_det_vs_stoch <- {
-    ost <- overlay_state
-    q_overlay <- if (is.null(overlay_probs)) probs else .norm_probs(overlay_probs)
-    band_df <- if (ost=="I") I_band else Inc_band
-    det_df  <- if (ost=="I") I_det  else Inc_det
-    if (!is.null(overlay_probs)) {
-      if (ost=="I" && !is.null(sim$proportions)) {
-        arr <- sim$proportions[,,, "I", drop=FALSE]; arr <- array(arr, dim=dim(arr)[1:3])
-        band_df <- .melt_band(arr, time, q_overlay, FALSE, NULL, pop_names)
-      } else if (ost=="incidence" && !is.null(sim$cases)) {
-        arr <- sim$cases; if (length(dim(arr))==2L) arr <- array(arr, dim=c(dim(arr),1L))
-        band_df <- .melt_band(arr, time, q_overlay, per_million, pops, pop_names)
-      }
-    }
-    .build_overlay_detstoch(ost, det_df, band_df, P, cols, overlay_det_col, overlay_title, show_bands=show_bands)
-  }
-  
+  # return named list
   list(
     S = plt_S,
     I = plt_I,
     R = plt_R,
     incidence = plt_inc,
     beta = plt_beta,
-    det_vs_stoch = plt_det_vs_stoch,
     SIR = plt_sir_basic,
     params = params_plot
   )
 }
 
-# ---------- arranger ----------
+#' Arrange dashboard panels
+#'
+#' @description
+#' Helper to arrange a list of ggplot panels with optional legend collection.
+#'
+#' @param plots A **list of ggplot objects** (named or unnamed). You can pass
+#'   the full list from [plot_dashboard()] or a subset (e.g., `plots[c("I","incidence")]`).
+#' @param layout Integer vector of length 2 giving `c(nrow, ncol)`. Default `c(2, 3)`.
+#' @param collect_legend Logical; if `TRUE`, collect and place a shared legend on the right.
+#'
+#' @return A patchwork object (also a ggplot), suitable for `print()`, `ggsave()`,
+#' or further composition with patchwork operators.
+#'
+#' @export
 arrange_dashboard <- function(plots, layout=c(2,3), collect_legend=TRUE){
   if (!requireNamespace("patchwork", quietly=TRUE)) stop("arrange_dashboard() needs {patchwork}.")
   if (!requireNamespace("ggplot2", quietly=TRUE))  stop("arrange_dashboard() needs {ggplot2}.")
