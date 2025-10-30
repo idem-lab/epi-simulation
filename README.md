@@ -137,11 +137,11 @@ plot_stoch(stoch_D, which = "SIR")
 ![](images/op3.png)
 
 Stochastic model will return a long list so we can use `to_tidy()` to convert it to a tidy data frame table for further analysis:<br>
-Time means simulation date (`n_times` input).<br>
-Group means populations size.<br>
-Sim means independent simulation runs (`n_sims` input).<br>
-State means S, I, R compartments.<br>
-Value means the number of individuals in each compartment at each time point for each simulation run.
+* **Time:** simulation date.<br>
+* **Group:** populations size.<br>
+* **Sim:** independent simulation runs.<br>
+* **State:** S, I, R compartments.<br>
+* **Value** the number of individuals in each compartment at each time point for each simulation run.
 
 ```{r}
 to_tidy(stoch_D)
