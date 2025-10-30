@@ -80,6 +80,7 @@ R.utils::sourceDirectory("R/")
 |  | `to_tidy()` | Coerce outputs to a tidy long table (time, group, sim, state, value). |
 |  | `cumulative_incidence ()` | Cumulative incidence over time. |
 |  | `sanity_check()` | Verify S + I + R ≈ 1 at each time step. |
+|  | `attack_rate()` | Final attack rate (final R proportions). |
 |  | `reff_from_sim()` | Calculate effective reproduction number over time. |
 
 # Example
