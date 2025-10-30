@@ -10,7 +10,8 @@ The SIRS model is a type of mathematical model used in epidemiology to describe 
 
 **Infectious(I)** means who have the disease and can spread it to susceptibles.<br>
 
-**Recovered (R)** have recovered from the disease and are immune.
+**Recovered (R)** means who have recovered from the disease and are immune.
+
 ![](images/SIRS.png)
 
 A simple continuous-time form is:
@@ -132,3 +133,7 @@ to_tidy(stoch_D)
 ![](images/op4.png)
 
 For more other examples, please check the `User-Demo.Rmd` file in the repository.
+
+## Note
+
+Active development in progress—README plots render as expected when using the packaged release.
