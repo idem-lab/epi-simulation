@@ -166,4 +166,4 @@ R.utils::sourceDirectory("R/")
 ```
 Once we turn into a package, we will update this README file accordingly.<br>
 
-Thank you!
+If there any questions please do not hesitate to open an issue on GitHub. Thank you!
