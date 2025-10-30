@@ -1,8 +1,8 @@
 #' @title Stochastic multi-population SIRS simulator
 #'
 #' @description
-#' Simulate a stochastic SIRS model across \eqn{P} subpopulations for `n_times`
-#' days. States are tracked as **counts** per simulation (S/I/R), with optional
+#' Simulate a SIRS model across \eqn{P} subpopulations for `n_times` days.
+#' States are tracked as **counts** per simulation (S/I/R), with optional
 #' reporting noise for cases. Transmission can vary by time and group via
 #' `beta_mat`. **No contact matrix is used**; each group’s hazard is
 #' within-group only:
@@ -20,7 +20,6 @@
 #' @param alpha `NULL`, scalar, or length-`P` vector in \[0,1]. Reporting probability
 #'   used to thin incident infections into observed `cases`.
 #' @param n_sims Integer (\eqn{\ge} 1). Number of independent simulation paths.
-#' @param stochastic Logical. If `TRUE` (default) use binomial draws; otherwise rounded expectations.
 #' @param seed Optional integer. RNG seed for reproducibility.
 #'
 #' @return A list with:
@@ -45,17 +44,16 @@
 #' @importFrom stats rbinom
 #' @export
 simulate_sirs_multi_stoch <- function(
-    n_times    = 365,
-    pop_vec    = c(5e4, 5e4),
-    I_init     = c(10, 10),
-    beta_mat   = NULL,        # scalar | vector(n_times) | matrix[n_times x P]
-    gamma      = 1/7,
-    omega      = 1/30,
-    epsilon    = 0,           # scalar or length-P
-    alpha      = NULL,        # NULL or scalar/length-P (for cases only)
-    n_sims     = 100,
-    stochastic = TRUE,
-    seed       = NULL
+    n_times  = 365,
+    pop_vec  = c(5e4, 5e4),
+    I_init   = c(10, 10),
+    beta_mat = NULL,        # scalar | vector(n_times) | matrix[n_times x P]
+    gamma    = 1/7,
+    omega    = 1/30,
+    epsilon  = 0,           # scalar or length-P
+    alpha    = NULL,        # NULL or scalar/length-P (for cases only)
+    n_sims   = 100,
+    seed     = NULL
 ) {
   P <- length(pop_vec)
   stopifnot(n_times >= 2, P >= 1, length(I_init) == P)
@@ -108,27 +106,17 @@ simulate_sirs_multi_stoch <- function(
     lambda_mat <- sweep(prev, 2, beta_row, `*`)
     lambda_mat <- sweep(lambda_mat, 2, epsilon, `+`)
     
-    if (!stochastic) {
-      new_inf <- matrix(0L, nrow = n_sims, ncol = P)
-      new_rec <- matrix(0L, nrow = n_sims, ncol = P)
-      loss_im <- matrix(0L, nrow = n_sims, ncol = P)
-      for (p in seq_len(P)) {
-        pinf <- pr(lambda_mat[, p])
-        new_inf[, p] <- pmin(S[t-1, , p], round(pinf * S[t-1, , p]))
-        new_rec[, p] <- round(gamma * I[t-1, , p])
-        loss_im[, p] <- round(omega * R[t-1, , p])
-      }
-    } else {
-      # Convert hazard to daily probability via 1 - exp(-lambda)
-      p_inf <- 1 - exp(-pmax(lambda_mat, 0))
-      new_inf <- matrix(0L, nrow = n_sims, ncol = P)
-      new_rec <- matrix(0L, nrow = n_sims, ncol = P)
-      loss_im <- matrix(0L, nrow = n_sims, ncol = P)
-      for (p in seq_len(P)) {
-        new_inf[, p] <- stats::rbinom(n_sims, size = S[t-1, , p], prob = pr(p_inf[, p]))
-        new_rec[, p] <- stats::rbinom(n_sims, size = I[t-1, , p], prob = pr(gamma))
-        loss_im[, p] <- stats::rbinom(n_sims, size = R[t-1, , p], prob = pr(omega))
-      }
+    # Convert hazard to daily probability via 1 - exp(-lambda)
+    p_inf <- 1 - exp(-pmax(lambda_mat, 0))
+    
+    new_inf <- matrix(0L, nrow = n_sims, ncol = P)
+    new_rec <- matrix(0L, nrow = n_sims, ncol = P)
+    loss_im <- matrix(0L, nrow = n_sims, ncol = P)
+    
+    for (p in seq_len(P)) {
+      new_inf[, p] <- stats::rbinom(n_sims, size = S[t-1, , p], prob = pr(p_inf[, p]))
+      new_rec[, p] <- stats::rbinom(n_sims, size = I[t-1, , p], prob = pr(gamma))
+      loss_im[, p] <- stats::rbinom(n_sims, size = R[t-1, , p], prob = pr(omega))
     }
     
     # Update & record
@@ -165,7 +153,7 @@ simulate_sirs_multi_stoch <- function(
       n_times = n_times, pop_vec = pop_vec, I_init = I_init,
       beta = beta_mat, gamma = gamma, omega = omega,
       epsilon = epsilon, alpha = alpha,
-      n_sims = n_sims, stochastic = stochastic, seed = seed
+      n_sims = n_sims, seed = seed
     )
   )
 }

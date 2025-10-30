@@ -1,3 +1,5 @@
+# This is a scipts for testing the functions outputs and plotting capabilities.
+
 # Sections:
 #(A) Deterministic (constant beta)
 #(B) Deterministic (seasonal beta)
@@ -86,7 +88,7 @@ stoch_C <- simulate_sirs_stoch(
   n_times = n_times, pop = pop, I_init = I_init,
   beta = beta, gamma = gamma, omega = omega,
   epsilon = epsilon, alpha = alpha,
-  n_sims = n_sims, stochastic = TRUE, seed = seed + 1
+  n_sims = n_sims, seed = seed + 1
 )
 stoch_C$params$ribbon_probs <- ribbon_probs
 
@@ -105,7 +107,7 @@ stoch_CS <- simulate_sirs_stoch(
   n_times = n_times, pop = pop, I_init = I_init,
   beta = beta_CS, gamma = gamma, omega = omega,
   epsilon = epsilon, alpha = alpha,
-  n_sims = n_sims, stochastic = TRUE, seed = seed
+  n_sims = n_sims, seed = seed
 )
 stoch_CS$params$ribbon_probs <- ribbon_probs
 
@@ -137,7 +139,6 @@ sim_F <- simulate_sirs_multi_stoch(
   epsilon    = mp_epsilon,
   alpha      = mp_alpha,
   n_sims     = mp_sims,
-  stochastic = TRUE,
   seed       = mp_seed
 )
 sim_F$params$ribbon_probs <- ribbon_probs
@@ -191,7 +192,7 @@ plots_single <- plot_dashboard(
   group_style   = "facet",
   show_bands    = FALSE                   # deterministic: lines only
 )
-panels_single <- c("sir_basic","incidence","beta","params")
+panels_single <- c("SIR","incidence","beta","params")
 p_single <- arrange_dashboard(plots_single[panels_single], layout = c(2,2), collect_legend = TRUE)
 print(p_single)
 
@@ -202,7 +203,9 @@ stoch_G<- simulate_sirs_stoch(
   n_times = 180,pop = 100, I_init = 2,
   beta = 0.2, gamma = 1/30, omega = 1/14,
   epsilon = 0, alpha = 0.1,
-  n_sims = n_sims, stochastic = TRUE, seed = seed + 1
+  n_sims = n_sims, seed = seed + 1
 )
 stoch_G$params$ribbon_probs <- ribbon_probs
 plot_stoch(stoch_G, which = "SIR")
+
+

@@ -9,8 +9,8 @@ output:
 ---
 
 ## Hi, there!  
-This is a demo for all the user inputs you can edit to run the various models and simulations.
-Inside we drafted different sections for each scenario (A to H).
+This is a demo for all the user inputs you can edit to run the various models and simulations.<br>
+Inside we drafted different sections for each scenario (A to H). 
 
 **Sections**
 : A) Deterministic (constant beta)
@@ -21,6 +21,10 @@ Inside we drafted different sections for each scenario (A to H).
 : F) Multi-pop stochastic
 : G) Dashboards with self arrangement
 : H) Summaries & helpers functions
+
+Explore the code chunks below and edit the inputs! Have fun :)<br>
+
+For installation please check the `README.md` instructions.<br>
 
 ## Edit your inputs here
 ```{r}
@@ -66,9 +70,9 @@ ribbon_probs <- c(0.025, 0.975)
 my_pop_cols <- c("#E41A1C", "#377EB8", "#4DAF4A")
 ```
 
-## Load the package
+## Load package functions
 ```{r}
-# library(epi-simulation)
+# Please ensure you have "R" file in your working directory
 R.utils::sourceDirectory("R/")
 ```
 
@@ -103,7 +107,7 @@ stoch_C <- simulate_sirs_stoch(
   n_times = n_times, pop = pop, I_init = I_init,
   beta = beta, gamma = gamma, omega = omega,
   epsilon = epsilon, alpha = alpha,
-  n_sims = n_sims, stochastic = TRUE, seed = seed
+  n_sims = n_sims, seed = seed
 )
 stoch_C$params$ribbon_probs <- ribbon_probs
 
@@ -121,7 +125,7 @@ stochD <- simulate_sirs_stoch(
   n_times = n_times, pop = pop, I_init = I_init,
   beta = betaD, gamma = gamma, omega = omega,
   epsilon = epsilon, alpha = alpha,
-  n_sims = n_sims, stochastic = TRUE, seed = seed
+  n_sims = n_sims, seed = seed
 )
 # prefer explicit vector; plot_stoch should read this if implemented
 stoch_C$params$ribbon_probs <- ribbon_probs
@@ -156,7 +160,6 @@ simF <- simulate_sirs_multi_stoch(
   epsilon    = mp_epsilon,
   alpha      = mp_alpha,
   n_sims     = mp_sims,
-  stochastic = TRUE,
   seed       = mp_seed
 )
 simF$params$ribbon_probs <- ribbon_probs
@@ -182,8 +185,10 @@ plot_DB <- plot_dashboard(
 # plot options: "SIR", S","I", "R", "incidence","beta","params"
 panels_DB <- c("S","I","R","incidence")
 
-# Arrange dashboard(Change layout as needed)
-p_DB <- arrange_dashboard(plot_DB[panels_DB], layout = c(2,2), collect_legend = TRUE)
+# Arrange dashboard
+p_DB <- arrange_dashboard(plot_DB[panels_DB],     # Select panels
+                          layout = c(2,2),        # Change layout here(rows, cols)
+                          collect_legend = TRUE)  # Collect legend in one panel
 
 print(p_DB)
 ```
@@ -224,6 +229,7 @@ tt <- to_tidy(simA)   # Change the data frame here
 tt <- to_tidy(simF)|> 
   dplyr::filter(group == 1, state == "I")
 
+# The table is large; show first 10 rows
 head(tt,10)
 ```
 
@@ -260,5 +266,6 @@ ggplot(data = data.frame(day = 1:365, beta = B), aes(x = day, y = beta)) +
 ```{r}
 ci_F <- cumulative_incidence(simF)
 
+# The table is large; show first 10 rows
 head(ci_F,10)
 ```
