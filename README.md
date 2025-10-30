@@ -136,4 +136,4 @@ For more other examples, please check the `User-Demo.Rmd` file in the repository
 
 ## Note
 
-Active development in progress—README plots render as expected when using the packaged release.
+Active development in progress—README plots will render correctly in the packaged version.
