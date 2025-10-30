@@ -130,7 +130,6 @@ simulate_sirs_multi <- function(
       gamma   = gamma,
       omega   = omega,
       beta    = beta_mat
-      # NOTE: C removed
     )
   )
 }
