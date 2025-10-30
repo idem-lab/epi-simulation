@@ -36,16 +36,32 @@ The `epi-simulation` package aims to simplify this process by providing a user-f
 allowing researchers and public health officials to quickly generate insights and inform decision-making.
 
 # Installation
-The development version of epi-simulation can be installed from GitHub with:
+
+The development version of epi-simulation can be installed from [GitHub](https://github.com/idem-lab/epi-simulation/tree/christy).<br>
+
+The current development work for epi-simulation lives on the `christy` branch.<br>
+
+First, download the package source code from GitHub.<br>
+
+* Option A - Download ZIP
+
+  - Go to the christy branch
+  - Click Code ▸ Download ZIP, then unzip locally.
+  
+* Option B - Clone via Terminal
+  - Open your RStudio and paste the following into Terminal.
 
 ```{r}
-install.packages("devtools")
+git clone -b christy https://github.com/idem-lab/epi-simulation.git
+```
 
-devtools::install_github("idem-lab/epi-simulation")
+Then Open the `epi-simulation.Rproj` file to load the project in RStudio.<br>
 
+Next, load the functions in R:
+
+```{r}
 # Load the functions
 R.utils::sourceDirectory("R/")
-
 ```
 
 # What's inside?
