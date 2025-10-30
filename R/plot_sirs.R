@@ -26,7 +26,6 @@
 #' plot_sirs(sim, which = "both_side")
 #' plot_sirs(sim, which = "overlay")
 #'
-#' @importFrom graphics par plot lines legend axis mtext
 #' @export
 plot_sirs <- function(
     sim,

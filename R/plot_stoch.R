@@ -1,4 +1,4 @@
-#' Plot single-population stochastic SIRS outputs
+#' @title Plot single-population stochastic SIRS outputs
 #'
 #' @description
 #' Visualise **single-population** stochastic SIRS results from a simulation
@@ -18,7 +18,6 @@
 #' @param per_million Logical; if `TRUE`, scale incidence to per-million using
 #'   `sim$params$pop` or `sim$pop` when available. Default `FALSE`.
 #' @param sir_cols Named colours for S/I/R (case-insensitive names accepted).
-#'   Defaults to `c(S="#0072B2", I="#CC79A7", R="#009E73")`.
 #' @param inc_col Colour for incidence line/ribbon. Default `"grey40"`.
 #' @param base_size Numeric base font size for the ggplot theme. Default `12`.
 #' @param show_bands Logical; show quantile ribbons when available. Default `TRUE`.

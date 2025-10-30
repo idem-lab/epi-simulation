@@ -16,9 +16,8 @@
 #'   giving transmission rates.
 #' @param gamma Numeric in \[0,1]. Daily recovery probability.
 #' @param omega Numeric in \[0,1]. Daily waning probability (R→S).
-#' @param epsilon Numeric scalar or length-`P` vector (\eqn{\ge} 0). Exogenous infection pressure.
-#' @param alpha `NULL`, scalar, or length-`P` vector in \[0,1]. Reporting probability
-#'   used to thin incident infections into observed `cases`.
+#' @param epsilon Numeric scalar or length-`P` vector (\eqn{\ge} 0). External infection pressure.
+#' @param alpha `NULL`, scalar, or length-`P` vector in \[0,1].Reporting probability for thinning cases.
 #' @param n_sims Integer (\eqn{\ge} 1). Number of independent simulation paths.
 #' @param seed Optional integer. RNG seed for reproducibility.
 #'
@@ -41,7 +40,6 @@
 #' #   epsilon = 1e-4, alpha = c(0.6, 0.6), n_sims = 50, seed = 42
 #' # )
 #'
-#' @importFrom stats rbinom
 #' @export
 simulate_sirs_multi_stoch <- function(
     n_times  = 365,

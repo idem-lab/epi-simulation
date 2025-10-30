@@ -7,14 +7,13 @@
 #' scalar (constant) or a vector of length `n_times` (time-varying).
 #'
 #' @param n_times Integer (\eqn{\ge} 2). Number of time steps (days).
-#' @param pop Integer/numeric (\eqn{>} 0). Total population size (closed).
+#' @param pop Integer/numeric (\eqn{>} 0). Total population size.
 #' @param I_init Integer/numeric (\eqn{\ge} 0). Initial infected **count**.
 #' @param beta Numeric. Either a scalar (constant) or a vector of length `n_times`
 #'   giving the transmission rate each day (must be finite and \eqn{\ge} 0).
 #' @param gamma Numeric in \[0,1]. Recovery rate per day (e.g., `1/7`).
 #' @param omega Numeric in \[0,1]. Waning rate per day from R to S (e.g., `1/30`).
-#' @param seed Optional integer. If supplied, used to set the RNG seed (useful if
-#'   `beta` was generated stochastically upstream).
+#' @param seed Optional integer. If supplied, used to set the RNG seed 
 #'
 #' @return A list with components:
 #' \describe{

@@ -1,12 +1,12 @@
-#' Tidy a SIRS simulation into a long data frame
+#' @title Tidy a SIRS simulation into a long data frame
 #'
 #' @description
 #' Convert heterogeneous SIRS simulation outputs (deterministic or stochastic,
-#' single- or multi-population) into one **long** table with a consistent schema:
+#' single- or multi-population) into one long table with a consistent schema:
 #' columns `time`, `group`, `sim`, `state`, `value`.
 #'
 #' @param sim A simulation result list (deterministic or stochastic; single- or multi-pop)
-#'   produced by the package simulators. See **Supported input shapes**.
+#'   produced by the package simulators.
 #'
 #' @return A base `data.frame` in long (tidy) format with columns
 #'   `time, group, sim, state, value`.
@@ -25,8 +25,6 @@
 #' # df <- to_tidy(sim_stoch_multi)
 #'
 #' @export
-
-
 to_tidy <- function(sim) {
   pack <- function(t, g, s, S, I, R, inc) {
     rbind(
@@ -113,12 +111,3 @@ to_tidy <- function(sim) {
   
   stop("Unrecognized sim structure for to_tidy().")
 }
-
-
-
-
-
-
-
-
-

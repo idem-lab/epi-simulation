@@ -13,7 +13,7 @@
 #'   (must be finite and \eqn{\ge} 0).
 #' @param gamma Numeric in \[0,1]. Daily recovery probability.
 #' @param omega Numeric in \[0,1]. Daily waning probability (R→S).
-#' @param epsilon Numeric (\eqn{\ge} 0). External infection pressure added to the hazard.
+#' @param epsilon Numeric (\eqn{\ge} 0). External infection pressure.
 #' @param alpha `NULL` or numeric in \[0,1]. Reporting probability for thinning cases.
 #' @param n_sims Integer (\eqn{\ge} 1). Number of independent simulation runs (columns).
 #' @param seed Optional integer. RNG seed for reproducibility.
@@ -38,7 +38,6 @@
 #' # out2 <- simulate_sirs_stoch(365, 2e5, 15, beta = b, gamma = 1/7, omega = 1/60,
 #' #                       epsilon = 1e-4, alpha = 0.6, n_sims = 25, seed = 1)
 #'
-#' @importFrom stats rbinom
 #' @export
 simulate_sirs_stoch <- function(
     n_times = 365,     # total number of time steps (e.g., days)

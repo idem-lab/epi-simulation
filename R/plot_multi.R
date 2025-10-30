@@ -1,4 +1,4 @@
-#' Plot multi-population SIRS outputs (deterministic + stochastic)
+#' @title Plot multi-population SIRS outputs (deterministic + stochastic)
 #'
 #' @description
 #' Visualise SIRS simulation results for **multiple populations** from either

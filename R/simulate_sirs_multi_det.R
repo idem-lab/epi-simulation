@@ -12,10 +12,9 @@
 #'   Initial infected **counts** per group.
 #' @param beta_mat Numeric scalar, vector (`n_times`), or matrix (`[n_times x P]`)
 #'   giving transmission rates.
-#' @param gamma Numeric in \[0,1]. Recovery rate per day (common across groups).
-#' @param omega Numeric in \[0,1]. Waning rate per day from R to S (common).
-#' @param seed Optional integer. Only used to fix upstream stochastic generation;
-#'   this simulator itself is deterministic.
+#' @param gamma Numeric in \[0,1]. Recovery rate per day.
+#' @param omega Numeric in \[0,1]. Waning rate per day from R to S.
+#' @param seed Optional integer. 
 #'
 #' @examples
 #' # Two groups, constant beta, no mixing between groups (decoupled)
@@ -40,9 +39,9 @@ simulate_sirs_multi <- function(
     pop_vec   = c(50000, 50000),     # population sizes per group (length = P)
     I_init    = c(10, 10),           # initial infected COUNTS per group (length = P)
     beta_mat  = NULL,                # transmissibility: scalar / vector(n_times) / matrix[n_times x P]
-    gamma     = 1/7,                 # recovery rate per day (same for all groups here)
+    gamma     = 1/7,                 # recovery rate per day
     omega     = 1/30,                # waning rate per day (R -> S, same for all groups)
-    seed      = 123                  # RNG seed for reproducibility (no randomness here, but ok)
+    seed      = 123                  # RNG seed for reproducibility
 ) {
   # ----- basic sizes -----
   P <- length(pop_vec)                              # number of groups/subpopulations
@@ -84,7 +83,7 @@ simulate_sirs_multi <- function(
   
   # Daily incidence (COUNTS) per group
   incidence <- matrix(0, nrow = n_times, ncol = P)
-  incidence[1, ] <- I[1, ] * pop_vec         # day-1 = seeded infections (optional convention)
+  incidence[1, ] <- I[1, ] * pop_vec         # day-1 = seeded infections 
   
   # ----- main loop over time -----
   for (t in 2:n_times) {
