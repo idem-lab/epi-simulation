@@ -37,7 +37,7 @@ allowing researchers and public health officials to quickly generate insights an
 
 # Installation
 
-The development version of epi-simulation can be installed from [GitHub](https://github.com/idem-lab/epi-simulation/tree/christy).<br>
+The development version of epi-simulation can be installed from [GitHub](https://github.com/idem-lab/epi-simulation/tree/main).<br>
 
 The current development work for epi-simulation lives on the `christy` branch.<br>
 
@@ -45,7 +45,7 @@ First, download the package source code from GitHub.<br>
 
 * Option A - Download ZIP
 
-  - Go to the christy branch
+  - Go to the [christy branch](https://github.com/idem-lab/epi-simulation/tree/christy)
   - Click Code ▸ Download ZIP, then unzip locally.
   
 * Option B - Clone via Terminal
@@ -141,7 +141,7 @@ Stochastic model will return a long list so we can use `to_tidy()` to convert it
 * **Group:** populations size.<br>
 * **Sim:** independent simulation runs.<br>
 * **State:** S, I, R compartments.<br>
-* **Value** the number of individuals in each compartment at each time point for each simulation run.
+* **Value:** the number of individuals in each compartment at each time point for each simulation run.
 
 ```{r}
 to_tidy(stoch_D)
