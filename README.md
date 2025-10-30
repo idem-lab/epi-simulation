@@ -73,11 +73,14 @@ R.utils::sourceDirectory("R/")
 |  | `plot_stoch()` | Stochastic ribbons/lines & incidence. |
 |  | `plot_multi()` | Multi-pop S/I/R/incidence (combined or faceted). |
 |  | `plot_dashboard()` + `arrange_dashboard()` | Build a multi-panel dashboard. |
-| **Summaries & helpers** | `summarize_sim()` | Headline outbreak metrics (peaks, final sizes, etc.). |
+|  | `plot_det_vs_stoch()` | Compare deterministic vs stochastic. |
+| **Summaries & helpers** | `summarize_sim()` | Headline outbreak metrics (peaks, final R, etc.). |
 |  | `make_beta()` | Create time-varying beta (constant, seasonal). |
 |  | `adjust_beta()` | Scale beta within specified day windows. |
 |  | `to_tidy()` | Coerce outputs to a tidy long table (time, group, sim, state, value). |
 |  | `cumulative_incidence ()` | Cumulative incidence over time. |
+|  | `sanity_check()` | Verify S + I + R ≈ 1 at each time step. |
+|  | `reff_from_sim()` | Calculate effective reproduction number over time. |
 
 # Example
 
