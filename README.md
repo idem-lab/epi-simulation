@@ -152,4 +152,18 @@ For more other examples, please check the `User-Demo.Rmd` file in the repository
 
 ## Note
 
-Active development in progress—README plots will render correctly in the packaged version.
+* Active development in progress—README plots will render correctly in the packaged version.
+
+* When the package is created the installation way will change into the following:
+
+```{r}
+install.packages("devtools")
+
+devtools::install_github("idem-lab/epi-simulation")
+
+# Load the functions
+R.utils::sourceDirectory("R/")
+```
+Once we turn into a package, we will update this README file accordingly.<br>
+
+Thank you!
