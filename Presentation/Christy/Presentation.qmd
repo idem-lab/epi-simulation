@@ -1,0 +1,646 @@
+---
+pagetitle: "Epidemic Model Simulation"
+subtitle: "A lightweight, ready-to-use Package"
+author: "Wing Hei(Christy) Lai"
+email: "wlai0012@student.monash.edu"
+date: "28 Oct 2025"
+unit-url: "https://github.com/idem-lab/epi-simulation"
+footer: "The Kids Research Institute Australia"
+format: 
+  revealjs:
+    logo: images/monash-stacked-blue-rgb-transparent.png
+    slide-number: c
+    multiplex: false
+    theme: assets/monash.scss
+    show-slide-number: all
+    show-notes: false
+    controls: true
+    width: 1280
+    height: 750
+    css: [assets/tachyons-addon.css, assets/custom.css, assets/lecture-01.css]
+    include-after-body: "assets/after-body.html"
+execute:
+  echo: false
+  fig-align: "center"
+---
+
+
+```{r, include = FALSE}
+current_file <- knitr::current_input()
+basename <- gsub(".[Rq]md$", "", current_file)
+
+knitr::opts_chunk$set(
+  fig.path = sprintf("images/%s/", basename),
+  fig.width = 6,
+  fig.height = 4,
+  fig.align = "center",
+  out.width = "100%",
+  fig.retina = 3,
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+## <br>[`r rmarkdown::metadata$pagetitle`]{.monash-blue .title} {#etc5543-title background-image="images/bg-01.png"}
+
+### `r rmarkdown::metadata$subtitle`
+
+Author: *`r rmarkdown::metadata$author`*
+
+`r rmarkdown::metadata$department`
+
+::: tl
+<br>
+
+<ul class="fa-ul">
+
+<li>
+
+[<i class="fas fa-envelope"></i>]{.fa-li}`r rmarkdown::metadata$email`
+
+</li>
+
+<li>
+
+[<i class="fas fa-calendar-alt"></i>]{.fa-li} `r rmarkdown::metadata$date`
+
+</li>
+
+<li>
+
+[<i class="fa-solid fa-globe"></i>]{.fa-li}<a href="`r rmarkdown::metadata[["unit-url"]]`">`r rmarkdown::metadata[["unit-url"]]`</a>
+
+</li>
+
+</ul>
+
+<br>
+:::
+
+```{r echo=FALSE}
+# ---- 1) EDIT YOUR INPUTS HERE -------------------
+# Common (single-pop)
+n_times <- 60
+pop     <- 100000
+I_init  <- 10
+beta    <- 0.75        # used in A & D
+gamma   <- 1/7
+omega   <- 1/30
+
+# Seasonal beta (for B, C)
+season_base  <- 0.70
+season_amp   <- 0.25   # 0 ≤ amplitude < 1
+season_phase <- 30
+
+# Stochastic (C, D)
+n_sims   <- 200
+epsilon  <- 1e-4
+alpha    <- 0.3
+seed     <- 42
+# >>> Default ribbon coverage set to 95% (users can still override via plot_stoch(..., probs=...))
+ribbon_probs<- c(0.025, 0.975)
+
+# Multi-pop (E, F)
+mp_n_times <- 180
+mp_pops    <- c(100000, 500, 200000)
+mp_Iinit   <- c(100, 5, 1000)
+mp_beta    <- 0.20
+mp_gamma   <- 1/7
+mp_omega   <- 1/30
+
+# Multi-pop stochastic (F)
+mp_sims    <- 200
+mp_epsilon <- 0
+mp_alpha   <- NULL
+mp_seed    <- 99
+
+# Optional colors for dashboards / combined
+my_pop_cols <- c("#E41A1C", "#377EB8", "#4DAF4A")
+
+# ---- 2) LOAD FUNCTIONS --------------------------
+R.utils::sourceDirectory("../../R/")
+
+library(kableExtra)
+```
+
+
+## Our Project Host
+
+::: {.column width="50%"}
+![](images/og.webp)
+:::
+
+::: {.column width="50%"}
+* The Infectious Disease Ecology and Modelling (IDEM) team
+* Led by Professor Nick Golding, Mentor by Dr. August Hao, Dr.Saras M. Windecker and Dr.Kate Senior.
+
+:::
+
+The team uses **modelling and maps** to measure risk for high-impact and neglected diseases (e.g., COVID-19) and provides **rapid analyses to policymakers**.
+
+
+## Our Project
+<br>
+
+Building a really to use R package to simulate the SIRS model.
+
+[Why this is the matters?]{.monash-blue}
+
+* **Speed matters:** We need to monitor and generate scenarios fast.
+* **Current pain:** Tools are fragmented and inconsistent.
+* **Who benefits & impact:** 
+   - Who not familiar with coding can easily run; 
+   - Experts can rapid, reproducible insights for policymakers (e.g. Government).
+
+
+## SIRS Model
+* [Susceptible (*S*)]{style="color:blue"} have no immunity from the disease.
+
+* [Infectious (*I*)]{style="color:red"} have the disease and can spread it to susceptibles.
+
+* [Recovered (*R*)]{style="color:green"} have recovered from the disease and are immune.
+
+![](images/SIRS.png){fig-align="center"}
+
+
+## SIRS Model (Conti..)
+::: {.columns}
+::: {.column width="50%"}
+![](images/SIRS.png)
+:::
+
+::: {.column width="50%"}
+$$
+\begin{aligned}
+\frac{dS}{dt} &= -\beta SI + \omega R\\
+\frac{dI}{dt} &=  \beta SI - \gamma I\\
+\frac{dR}{dt} &=  \gamma I - \omega R\\
+\end{aligned}
+$$
+:::
+:::
+::: {.callout}
+* $\beta$ is the transmission rate.
+* $\gamma$ is the recovery rate.
+* $\omega$ is rate at which the immune in R becomes susceptible again.(R → S)
+* $N = S + I + R$ is the total population size.
+
+:::
+
+## How to use? 
+::: {.callout}
+* Users can easily run the simulation and plot the result by following **3 simple steps**: 
+
+  - **Edit** your inputs → **Load** functions → **Run** simulation sections and plot results
+  
+* Repeatable and customizable.
+
+:::
+
+::: {.column width="50%" style="font-size:90%"}
+We have different functions for different scenarios:
+
+ - Deterministic
+ - Stochastic
+ - Multiple population(Deterministic)
+ - Multiple population(Stochastic)
+ - Dashboard with self arrange
+
+:::
+:::{.column width="50%" style="font-size:80%"}
+
+```{r eval=FALSE}
+#| code-line-numbers: "1-8"
+# ---- 1) EDIT YOUR INPUTS HERE -------------------
+# Common (single-pop)
+n_times <- 365     # Total days to simulate
+pop     <- 100000  # Population size
+I_init  <- 10      # Initial number of infectious individuals
+beta    <- 0.75    # Transmission rate  
+gamma   <- 1/7     # Recovery rate
+omega   <- 1/30    # Rate of loss of immunity(R -> S)
+
+# Multi-pop
+mp_n_times <- 180                     # Total days to simulate
+mp_pops    <- c(100000, 500, 200000)  # Population sizes
+mp_Iinit   <- c(100, 5, 1000)         # Initial infectious individuals
+mp_beta    <- 0.20                    # Transmission rate
+mp_gamma   <- 1/7                     # Recovery rate
+mp_omega   <- 1/30                    # Rate of loss of immunity(R -> S)
+
+# Customise uncertainty ribbons(Default to 95%)
+ribbon_probs<- c(0.025, 0.975)
+```
+:::
+
+
+## Deterministic 
+:::{.column width="100%"}
+* Deterministic models use **fixed parameters**, it is simple and fast to run.
+* Provide fixable visual options to show the simulation result:
+  
+  - Basic SIR plot, Incidence plot, Overlay plot, Both side plot
+ 
+```{r echo = FALSE}
+# A) Deterministic (constant beta)
+sim_A <- simulate_sirs_det(
+  n_times = n_times, pop = pop, I_init = I_init,
+  beta = beta, gamma = gamma, omega = omega
+)
+```
+::: 
+::: {.column width="50%" .callout}
+```{r}
+plot_sirs(sim_A, which = "sir")
+```
+:::
+
+:::{.column width="50%" .callout}
+```{r}
+plot_sirs(sim_A, which = "incidence")
+```
+:::
+
+## Deterministic (conti..)
+:::{.column width="50%" .callout}
+```{r}
+plot_sirs(sim_A, which = "overlay")
+```
+:::
+
+::: {.column width="50%" .callout}
+```{r}
+plot_sirs(sim_A, which = "both_side")
+```
+:::
+
+
+## Stochastic
+:::{.callout}
+* Stochastic models add **randomness** to better reflect real-world unpredictability.
+  - Customizable number of simulation runs.
+  - **Epsilon**: External infection pressure.
+  - **Alpha**: Reporting rate.
+
+* Default uncertainty ribbons cover 95% of simulation outcomes(customised by users).
+
+:::
+
+:::{.column width="40%"}
+```{r eval=FALSE}
+# Stochastic
+n_sims   <- 200   # Number of independent simulation runs (columns).
+epsilon  <- 1e-4  # External infection pressure.
+alpha    <- 0.3   # Reporting rate
+seed     <- 42    # Random seed for reproducibility
+
+# Customise uncertainty ribbons(Default to 95%)
+ribbon_probs<- c(0.025, 0.975)
+```
+
+:::
+
+:::{.column width="60%" style="font-size:70%"}
+
+```{r echo=FALSE}
+stoch_D <- simulate_sirs_stoch(
+  n_times = 80, pop = 1000, I_init = 5,
+  beta = 0.2, gamma = 1/30, omega = 1/14,
+  epsilon = 0, alpha = 0.1,
+  n_sims = n_sims, seed = seed
+)
+stoch_D$params$ribbon_probs <- ribbon_probs
+plot_stoch(stoch_D, which = "SIR")
+```
+
+:::
+
+## Multiple Population
+* Consider different groups with different population sizes and initial infectious individuals.
+
+:::{.column width="50%"}
+```{r eval=FALSE}
+#| code-line-numbers: "3,4,15,16"
+
+# Multi-pop 
+mp_n_times <- 180                        # Total days to simulate
+mp_pops    <- c(100000, 500, 200000)     # Population sizes
+mp_Iinit   <- c(100, 5, 1000)            # Initial infectious individuals
+mp_beta    <- 0.20                       # Transmission rate
+mp_gamma   <- 1/7                        # Recovery rate
+mp_omega   <- 1/30                       # Rate of loss of immunity(R -> S)
+
+# Multi-pop stochastic
+mp_sims    <- 200      # Number of stochastic simulations
+mp_epsilon <- 0        # Noise parameter
+mp_alpha   <- NULL     # Scaling factor for stochasticity
+mp_seed    <- 99       # Random seed for reproducibility
+
+# Customise colors for multi-pop
+my_pop_cols <- c("#E41A1C", "#377EB8", "#4DAF4A")
+```
+
+:::
+
+:::{.column width="50%"}
+```{r echo=FALSE}
+sim_F <- simulate_sirs_multi_stoch(
+  n_times    = mp_n_times,
+  pop_vec    = mp_pops,
+  I_init     = mp_Iinit,
+  beta_mat   = mp_beta,     
+  gamma      = mp_gamma,
+  omega      = mp_omega,
+  epsilon    = mp_epsilon,
+  alpha      = mp_alpha,
+  n_sims     = mp_sims,
+  seed       = mp_seed
+)
+sim_F$params$ribbon_probs <- ribbon_probs
+
+sum_F_total <- summarize_sim(sim_F, level = "per_pop")
+```
+
+```{r echo=FALSE}
+pF1 <- plot_multi(sim_F, which = "I", group_style = "combined")
+print(pF1)
+```
+
+:::
+
+
+
+
+## Summary of simulations{.smaller}
+
+* Used `DT` package - Datatable with **interactive** search, filter directly
+
+```{r echo=FALSE}
+library(DT)
+library(htmltools)
+
+# CSS just for this table
+tags$style(HTML("
+#sumF_tbl table.dataTable td,
+#sumF_tbl table.dataTable th,
+#sumF_tbl .dataTables_info,
+#sumF_tbl .dataTables_paginate,
+#sumF_tbl .dataTables_length,
+#sumF_tbl .dataTables_filter label {
+  font-size: 24px !important;   /* tweak size here: 11px, 10px, etc. */
+}
+"))
+
+# Your table (note elementId and 'compact' class)
+datatable(
+  sum_F_total,
+  rownames = FALSE,
+  filter = "none",
+  options = list(
+    pageLength = 10,
+    lengthMenu = c(10, 25, 50, 100)
+  ),
+  class = "compact stripe hover",
+  elementId = "sumF_tbl"
+) 
+
+```
+
+
+## Still in Developing: Dashboard Function {.smaller}
+* Allow users to run the simulation and plot the result in **one function call**.
+* Allow user to **arrange their own** dashboard for their **further analysis**.
+* Still in developing...here is the **draft** version.
+
+  - Current plots options: SIR, Incidence, beta, S, I, R, parameters.
+
+::: {.column width="30%"}
+``` r
+── Simulation parameters ──
+
+• n_times: 365
+• P: 1
+• pop_vec: 1
+• I_init: 10
+• beta: [vector]
+• gamma: 0.1429
+• 1/gamma (days): 7.00
+• omega: 0.03333
+• 1/omega (days): 30.00
+• epsilon: —
+• alpha: —
+• n_sims: 1
+• stochastic: FALSE
+```
+<sup>Created on 2025-10-18 with [reprex v2.1.1](https://reprex.tidyverse.org)</sup>
+
+:::
+
+:::{.column width="70%"}
+![](images/db2.png)
+
+:::
+
+## Still in Developing: Dashboard Function
+:::{.callout}
+* Consider the **multi-population** and **Stochastic** scenario, different options for group style:
+  - "**facet**": each population shown in a separate plot panel.
+  - "**combined**": all populations shown in the same plot with different colors.
+  
+:::
+:::: {.columns}
+
+::: {.column width="50%" .smaller}
+Group style = "facet"
+```{r echo=FALSE,results='hide'}
+plots_F <- plot_dashboard(
+  sim           = sim_F,
+  probs         = c(0.95),
+  per_million   = TRUE,
+  group_style   = "facet",
+  pop_cols      = my_pop_cols,
+  show_bands    = TRUE
+)
+
+panels_F <- c("S","I","R","incidence")
+p_F <- arrange_dashboard(plots_F[panels_F], layout = c(2,2), collect_legend = TRUE)
+```
+
+```{r echo=FALSE}
+print(p_F)
+```
+
+:::
+
+::: {.column width="50%" .smaller}
+Group style = "combined"
+```{r echo=FALSE, results='hide'}
+plots_FF <- plot_dashboard(
+  sim           = sim_F,
+  probs         = c(0.95),
+  per_million   = TRUE,
+  group_style   = "combined",
+  pop_cols      = my_pop_cols,
+  show_bands    = FALSE
+)
+
+panels_FF <- c("S","I","R","incidence")
+p_FF <- arrange_dashboard(plots_FF[panels_FF], layout = c(2,2), collect_legend = TRUE)
+```
+
+```{r echo=FALSE}
+print(p_FF)
+```
+
+
+:::
+::::
+
+## What next?
+
+ - **Finish the dashboard function** 
+ 
+ 
+ - **Well R markdown documentation**
+ 
+   
+ - **Tidy up the functions and make the package ready.**
+
+# Thank You! <br> Q&A 
+
+## Appendix A - Draft Demo Rmarkdown File
+
+![](images/demo.png)
+
+## Appendix B - Functions
+Current functions
+
+:::{.column width="30%"}
+```{r echo=FALSE}
+library(fs)
+tree <- dir_tree(path = "../../R")
+
+```
+
+:::
+:::{.column width="70%"}
+
+```{r}
+#| echo: false
+codeify <- function(x) paste(sprintf("`%s`", x), collapse = ", ")
+
+tbl <- data.frame(
+Scenario = c("Deterministic","Single-pop Stoch","Multi-pop","Dashboard"),
+Options = c(
+codeify(c("SIR","Daily incidence","Overlay","Both")),
+codeify(c("SIR","Daily incidence","Overlay","Both")),
+codeify(c("S","I","R","Daily incidence")),
+codeify(c("SIR","S","I","R","Daily incidence","beta","params"))
+),
+check.names = FALSE
+)
+
+knitr::kable(tbl)
+
+```
+
+
+:::
+
+## Appendix C - Core functions return to list
+
+```{r}
+# If you want a single simulation’s trajectory (say sim 5) for pop 2:
+I_t_series <- sim_F$proportions[ , 5, 2, "I"]  
+
+I_t_series
+
+```
+
+
+
+## Appendix D -Deterministic Slide plot
+
+:::{.column width="50%"}
+```{r eval=FALSE}
+# Common (single-pop)
+n_times <- 60
+pop     <- 100000
+I_init  <- 10
+beta    <- 0.75        
+gamma   <- 1/7
+omega   <- 1/30
+```
+
+:::
+
+::: {.column width="50%"}
+```{r}
+plot_sirs(sim_A, which = "sir")
+```
+:::
+
+## Appendix E - Stochastic Slide plot
+
+```{r}
+stoch_D <- simulate_sirs_stoch(
+  n_times = 80, pop = 1000, I_init = 5,
+  beta = 0.2, gamma = 1/30, omega = 1/14,
+  epsilon = 0, alpha = 0.1,
+  n_sims = n_sims, seed = seed + 1
+)
+```
+
+```{r echo=FALSE}
+stoch_D$params$ribbon_probs <- ribbon_probs
+plot_stoch(stoch_D, which = "SIR")
+```
+
+## Appendix F - Dashboard Slide plot
+```{r echo=FALSE,results='hide'}
+plots_FD <- plot_dashboard(
+  sim           = sim_F,
+  probs         = c(0.95),
+  per_million   = TRUE,
+  group_style   = "facet",
+  pop_cols      = my_pop_cols,
+  show_bands    = TRUE
+)
+
+panels_FD <- c("S","I")
+p_FD <- arrange_dashboard(plots_FD[panels_FD], layout = c(1,2), collect_legend = TRUE)
+```
+
+```{r echo=FALSE}
+print(p_FD)
+```
+
+## Appendix G - Dashboard Arrange
+
+```{r eval=FALSE}
+panels_FC <- c("S","I","R","incidence","beta","params")
+p_FC <- arrange_dashboard(plots_FC[panels_FC], layout = c(3,3), collect_legend = TRUE)
+```
+
+![](images/db3.png)
+
+
+## Appendix H — Seasonal transmission rate β(t)
+
+Contact patterns, climate, and school terms nudge transmission up/down through the year. A simple way to encode that is to let β oscillate smoothly.
+
+:::{.callout}
+* Seasonal: beta oscillates like a cosine curve over a 365-day period
+
+* Formula: 
+$$\beta_t\ = base * (1 + amplitude * cos(2 \pi (t + phase)/365))$$
+
+    - base: average transmission rate
+    
+    - amplitude: how much it fluctuates (0 = flat, closer to 1 = bigger swings)
+    
+    - phase: Phase shift (days) for seasonality.
+    
+:::
+
