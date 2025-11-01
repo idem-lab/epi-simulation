@@ -1,0 +1,200 @@
+---
+title: "Epidemiology by Design: Building a Usable SIRS Pipeline"
+author: Varun Sridhar
+date: "28 October 2025"
+toc: false
+format:
+  presentation-beamer: default34
+  presentation-revealjs+letterbox: default
+editor: 
+  markdown: 
+    wrap: 72
+---
+
+```{r}
+#| label: load-packages
+library(knitr)
+library(ggplot2)
+library(dplyr)
+```
+
+## Project Snapshot
+
+![](images/Project Snapshot.png){height="80%" fig-align="center"}
+
+## Why It Matters
+
+-   Fast, clear signals for seasonal illness planning
+
+-   Decision-ready visuals from modelling
+
+-   Repeatable outputs teams can share quickly
+
+-   Quick what-if comparisons to test options
+
+-   Consistent, standardized figures across projects/terms
+
+
+## Project Goal
+
+![](images/Project%20Goals.png){width="100%" fig-align="center"}
+
+:::::: columns
+::: {.column width="33%"}
+**Overall Aim:**
+
+-   Standardised package
+
+-   Simple visuals
+
+-   Faster decisions
+:::
+
+::: {.column width="34%"}
+**Core Outputs:**
+
+-   Baseline
+
+-   Seasonality
+
+-   Risk band
+
+-   Multi-group
+:::
+
+::: {.column width="33%"}
+**What Users Can Do Now:**
+
+-   Quick start
+
+-   What-if
+
+-   Compare groups
+
+-   Export PNGs
+:::
+::::::
+
+## What is the SIR Model?
+
+::::: columns
+::: {.column width="48%"}
+![](images/SIR.png){width="100%" fig-align="center"}
+:::
+
+::: {.column width="52%"}
+-   **S** – Susceptible: can get it
+-   **I** – Infected: contagious now
+-   **R** – Recovered: temporarily immune
+-   **Flows**: S → I (spread), I → R (recovery), R → S (waning)
+-   **Model used**: SIRS (includes waning immunity)
+:::
+:::::
+
+## How It Works (At a Glance)
+
+![](images/How%20it%20Works%20(At%20a%20Glance).png){width="100%"
+fig-align="center"}
+
+## Quick Demo (What I’ll change)
+
+::::: columns
+::: column
+-   **Days (`n_times`)** — length of the run
+-   **Population (`pop`)** — number of people
+-   **Seed cases (`I_init`)** — starting infections
+-   **Contagiousness (`beta`)** — how easily it spreads
+-   **Recovery time (`gamma`)** — how fast people recover
+:::
+
+::: column
+-   **Immunity waning (`omega`)** — how fast immunity fades
+-   **Sims (`n_sims`)** — width of the risk band
+-   **Seed (`seed`)** — makes the run repeatable
+:::
+:::::
+
+## Quick Demo (Code I’ll run)
+
+```{r,eval=FALSE,echo=TRUE}
+# Load helpers + simulators
+R.utils::sourceDirectory("R/", modifiedOnly = FALSE)
+source("R/simulate_sirs_det.R")
+source("R/simulate_sirs_stoch.R")
+source("R/plot_det_vs_stoch.R")
+
+# Inputs to tweak
+n_times <- 365; pop <- 100000; I_init <- 10
+beta <- 0.18; gamma <- 1/7; omega <- 1/30
+
+# Run baseline + ribbons
+det <- simulate_sirs_det(n_times, pop, I_init, beta, gamma, omega)
+st  <- simulate_sirs(n_times, pop, I_init, beta, gamma, omega,
+                     epsilon = 0, alpha = NULL, n_sims = 200,
+                     stochastic = TRUE, seed = 42)
+
+plot_det_vs_stoch(det, st, state = "incidence", probs = c(0.1, 0.9))
+```
+
+## What People Can Do Now
+
+![](images/What%20People%20Can%20Do%20Now.png){width="70%"
+fig-align="center"}
+
+## Trust & Quality
+
+![](images/Trust%20&%20Quality.png){width="100%" fig-align="center"}
+
+## Challenges & Limitations
+
+::::: columns
+::: {.column width="52%"}
+**Challenges we faced:**
+
+-   Clarity vs speed
+
+-   Naming & standards
+
+-   Uncertainty handling
+
+-   Environment quirks
+
+-   Multi-group setup
+:::
+
+::: {.column width="52.5%"}
+**Current limitations:**
+
+-   No real-data calibration yet
+
+-   Simple dynamics (SIRS only)
+
+-   Performance at high sims/P
+
+-   Packaging & docs in progress
+
+-   Reliant on user inputs
+:::
+:::::
+
+## What’s Next?
+
+::::: columns
+::: {.column width="50%"}
+-   **Calibrate to real data** — fit parameters to recent term data for
+    local realism.
+-   **Add simple age/school groups** — kids vs adults (or year bands)
+    with split outputs.
+-   **One-click weekly report** — auto-export PNG/PDF bundle for
+    briefings.
+:::
+
+::: {.column width="50%"}
+-   **Preset scenarios** — baseline, winter bump, holiday closure, quick
+    what-ifs.
+-   **Package + quick-start docs** — install, run, and reproduce in
+    minutes.
+-   **Pin versions & basic tests** — lock deps; add unit checks for core
+    functions.
+:::
+:::::

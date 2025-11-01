@@ -1,0 +1,117 @@
+---
+title: "Epidemiology by Design: A Reproducible SIRS Modeling Workflow"
+author:
+- name: Varun Sridhar
+  degrees: Master of Business Analytics
+  email: vsri0012@student.monash.edu
+phone: (03) 9905 2478
+email: BusEco-Econometrics@monash.edu
+organization: Kids Research Institute Australia
+bibliography: references.bib
+toc: true
+format: report-pdf
+resources:
+  - "plots/*"
+---
+
+```{r}
+knitr::opts_chunk$set(
+eval    = FALSE,
+message = FALSE,
+warning = FALSE
+)
+```
+
+```{r}
+suppressPackageStartupMessages({
+if (requireNamespace("rprojroot", quietly = TRUE)) {
+knitr::opts_knit$set(
+root.dir = rprojroot::find_root(rprojroot::has_file("epi-simulation.Rproj"))
+)
+} else if (requireNamespace("here", quietly = TRUE)) {
+knitr::opts_knit$set(root.dir = here::here())
+} else {
+knitr::opts_knit$set(root.dir = getwd())
+}
+})
+```
+
+
+# Abstract
+
+This report presents a reproducible workflow for epidemiological simulation using a Susceptible-Infectious-Recovered-Susceptible (SIRS) model. I implemented core modeling code and utilities, including a stochastic single-population simulator and helpers for tidy outputs, cumulative metrics, beta-schedule adjustment, and basic multi-population checks. Using these tools, I ran deterministic (constant and seasonal) and stochastic scenarios. Methods are transparent: short parameter blocks generate simulations, and a single script writes publication-ready figures (S/I/R trajectories, derived daily incidence, uncertainty ribbons, and multi-population comparisons per million) to the plots/ folder. Results highlight peak timing and size under constant beta, the effect of seasonal forcing on amplitude and timing, variability across 200 stochastic runs, and cross-group differences when scaled per million. Complete code listings are provided in the Appendices, with fixed seeds and repository links to ensure exact reproduction. My individual contribution focuses on the modeling logic and figure pipeline; teammate materials (for example, the user demo and README) are acknowledged where relevant. The workflow supports fast what-if exploration, consistent visuals, and clear communication for decision-ready epidemiology.
+
+# Introduction
+
+In this report I build a small, reproducible workflow for simulating infectious disease dynamics using a Susceptible–Infectious–Recovered–Susceptible (SIRS) model. The goal is to show clear, decision-ready outputs while keeping the code minimal and fully repeatable. I implement single-population simulations in both deterministic and stochastic forms, and extend to a simple multi-population setting. The figures used in the Results section are generated from a single script and saved to the plots/ folder, so that anyone can rebuild the same outputs from source.
+
+Why SIRS? It captures reinfection through waning immunity and is a useful starting point for seasonal illnesses and endemic settings. The internship work focused on: (i) getting a reliable simulation core, (ii) making figures that communicate peak timing, magnitude, and uncertainty, and (iii) packaging short code snippets alongside figures so readers can reproduce exactly what they see.
+
+The rest of the report is structured as follows. Section 2 describes the model and how simulations and figures are produced. Section 3 presents results for deterministic (constant and seasonal) and stochastic scenarios, plus multi-population views. Section 4 discusses implications for epidemiology and planning. Section 5 lists limitations and future extensions. Section 6 summarises implementation details. Section 7 concludes.
+
+# Methods
+
+## Model structure
+
+The SIRS model divides the population into three states: S (susceptible), I (infectious), and R (recovered/immune). Individuals in R lose immunity at rate omega and return to S. The population is assumed closed (no births, deaths, or migration) with mass-action mixing. Transmission is governed by a contact rate beta(t), recovery by gamma, and waning by omega. Daily incidence is defined as the number of new infections moving from S to I on each day. Seasonality is represented by allowing beta(t) to vary over time (for example, sinusoidal forcing).In this report, “incidence” means new infections per day. For multi-population comparisons, incidence is also shown per million to standardise scales.
+
+## Deterministic simulations
+
+Deterministic simulations use expected flows at each time step to update S, I, and R. Baseline scenarios use a constant beta, while seasonal scenarios replace beta with beta(t). Outputs are S, I, R proportions and a derived daily incidence series.
+
+## Stochastic simulations
+
+Stochastic simulations use binomial draws for each transition (infection, recovery, waning) to capture variability. Many independent runs are generated and summarised by a center line (median) with uncertainty ribbons (for example, 95%). The reporting process can optionally thin cases via a reporting probability alpha.
+
+## Multi-population setup
+
+The multi-population deterministic model runs the same SIRS dynamics for each group with specified population sizes, initial infections, and a beta matrix (constant in this report). This enables comparison across groups using common scales (for example, incidence per million).
+
+## Figure generation workflow
+
+All publication-ready figures are produced from a single reproducible pipeline. A plotting script reads the simulation outputs, computes any derived measures (for example, daily incidence or per-million scaling), and saves PNGs to the plots/ folder with consistent styling and labels. The same script is used to regenerate figures from a clean checkout of the repository.
+
+## Reproducibility
+
+Reproducibility is ensured by: (i) fixed random seeds for stochastic runs, (ii) saving all generated figures to a known location (`plots/`), and (iii) keeping the exact simulation and plotting code under version control. R version and package versions are recorded and reported in Appendix C. All code listings referenced in this section are provided in the Appendices.
+
+\newpage
+
+# Results
+
+## Deterministic (constant beta)
+::: {#fig-det-sir .figure}
+```{r, echo=FALSE, eval=TRUE, out.width="85%"}
+knitr::include_graphics("plots/det_sir.png")
+```
+
+**Figure 1.** Deterministic SIRS with constant beta. Susceptible falls as Infectious rises and then declines; Recovered increases accordingly. The size and timing of the Infectious peak are driven by the initial susceptible pool and the ratio beta:gamma.
+:::
+
+## Deterministic (seasonal Beta) → SIR 
+
+## Stochastic (single-pop) → I(t) ribbon + cases ribbon 
+
+## Multi-population (deterministic) → S combined, I faceted, incidence per million 
+
+## Key observations (peaks, timing, variability) 
+
+# Discussion Interpretation for epidemiology. What the figures show for planning/decision-making. 
+
+# Limitations & future work Fixed mixing, closed population, simple seasonality, etc. 
+
+# Implementation notes Package/file layout, function list, and how the plotting code reads sim outputs. 
+
+# Conclusion 
+
+# References 
+
+# Appendices 
+
+## A. Full plotting script (trimmed to essentials) 
+
+## B. Additional/alternate figures (if any) 
+
+## C. Session info (R version & packages) 
+
+## D. Author contribution & timeline (solo)
