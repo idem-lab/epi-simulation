@@ -157,4 +157,118 @@ cumulative_incidence <- function(sim) {
 # ---- ATTACK RATE -------------------------------------------------------------
 
 #' attack_rate
-#' @title C
+#' @title Cumulative attack rate over the simulation horizon
+#' @description
+#' Uses recorded flows where available:
+#' * Prefer `cases` (reported) if present; else `incidence` (true infections).
+#' * Handles single-pop and multi-pop, deterministic and stochastic.
+#' * For multi-pop **stochastic** arrays `[time × sims × groups]`, returns a
+#'   matrix `[sims × groups]` so groups are not mixed.
+#' * If no flows exist, falls back to final `R(T)` proportion (with a warning).
+#' @param sim A simulation output object.
+#' @return
+#' * scalar (single-pop deterministic)
+#' * length `n_sims` vector (single-pop stochastic)
+#' * length `n_groups` vector (multi-pop deterministic)
+#' * `[sims × groups]` matrix (multi-pop stochastic)
+#' @examples
+#' # ar <- attack_rate(sim)
+attack_rate <- function(sim) {
+  # small helper already defined above in this file; re-declare if needed:
+  `%||%` <- function(x, y) if (is.null(x)) y else x
+  
+  # -------------------- Prefer CASES if present --------------------
+  if (!is.null(sim$cases)) {
+    # 3D array: [time × sims × groups]  -> matrix [sims × groups]
+    if (is.array(sim$cases) && length(dim(sim$cases)) == 3L) {
+      G <- dim(sim$cases)[3]
+      S <- dim(sim$cases)[2]
+      pop_vec <- sim$params$pop_vec %||% sim$pop_vec %||% rep(1, G)
+      ar <- matrix(NA_real_, nrow = S, ncol = G)
+      for (g in seq_len(G)) {
+        tot <- colSums(sim$cases[ , , g, drop = FALSE], na.rm = TRUE)
+        ar[, g] <- tot / pop_vec[g]
+      }
+      colnames(ar) <- paste0("g", seq_len(G))
+      return(ar)
+    }
+    
+    # 2D matrix: could be [time × sims] OR [time × groups]
+    if (is.matrix(sim$cases)) {
+      pop_vec <- sim$params$pop_vec %||% sim$pop_vec
+      if (!is.null(pop_vec) && length(pop_vec) == ncol(sim$cases)) {
+        # interpret columns as groups
+        return(colSums(sim$cases, na.rm = TRUE) / pop_vec)
+      } else {
+        # interpret columns as sims (single-pop)
+        pop <- sim$params$pop %||% sim$pop %||% 1
+        return(colSums(sim$cases, na.rm = TRUE) / pop)
+      }
+    }
+    
+    # vector: single-pop deterministic
+    if (is.vector(sim$cases)) {
+      pop <- sim$params$pop %||% sim$pop %||% 1
+      return(sum(sim$cases, na.rm = TRUE) / pop)
+    }
+  }
+  
+  # -------------------- Otherwise use INCIDENCE --------------------
+  if (!is.null(sim$incidence)) {
+    # 3D array: [time × sims × groups]  -> matrix [sims × groups]
+    if (is.array(sim$incidence) && length(dim(sim$incidence)) == 3L) {
+      G <- dim(sim$incidence)[3]
+      S <- dim(sim$incidence)[2]
+      pop_vec <- sim$params$pop_vec %||% sim$pop_vec %||% rep(1, G)
+      ar <- matrix(NA_real_, nrow = S, ncol = G)
+      for (g in seq_len(G)) {
+        tot <- colSums(sim$incidence[ , , g, drop = FALSE], na.rm = TRUE)
+        ar[, g] <- tot / pop_vec[g]
+      }
+      colnames(ar) <- paste0("g", seq_len(G))
+      return(ar)
+    }
+    
+    # 2D matrix: [time × sims] OR [time × groups]
+    if (is.matrix(sim$incidence)) {
+      pop_vec <- sim$params$pop_vec %||% sim$pop_vec
+      if (!is.null(pop_vec) && length(pop_vec) == ncol(sim$incidence)) {
+        return(colSums(sim$incidence, na.rm = TRUE) / pop_vec)
+      } else {
+        pop <- sim$params$pop %||% sim$pop %||% 1
+        return(colSums(sim$incidence, na.rm = TRUE) / pop)
+      }
+    }
+    
+    # vector: single-pop deterministic
+    if (is.vector(sim$incidence)) {
+      pop <- sim$params$pop %||% sim$pop %||% 1
+      return(sum(sim$incidence, na.rm = TRUE) / pop)
+    }
+  }
+  
+  # -------------------- Fallback: final R proportion --------------------
+  warning("No cases/incidence available; returning final R proportion as a proxy (may understate true AR in SIRS).")
+  
+  # single-pop deterministic: vectors
+  if (!is.null(sim$R) && is.vector(sim$R) && is.null(sim$proportions)) {
+    return(tail(sim$R, 1))
+  }
+  
+  # single-pop stochastic: proportions array [time × sims × state]
+  if (!is.null(sim$proportions)) {
+    if (length(dim(sim$proportions)) == 3L) {
+      M <- dim(sim$proportions)[2]
+      return(sapply(seq_len(M), function(j) tail(sim$proportions[, j, "R"], 1)))
+    }
+  }
+  
+  # multi-pop deterministic: matrices [time × groups]
+  if (!is.null(sim$R) && is.matrix(sim$R)) {
+    G <- ncol(sim$R)
+    return(sapply(seq_len(G), function(g) tail(sim$R[, g], 1)))
+  }
+  
+  stop("Unrecognized sim structure for attack_rate().")
+}
+
