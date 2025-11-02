@@ -78,10 +78,12 @@ R.utils::sourceDirectory("R/")
 |  | `make_beta()` | Create time-varying beta (constant, seasonal). |
 |  | `adjust_beta()` | Scale beta within specified day windows. |
 |  | `to_tidy()` | Coerce outputs to a tidy long table (time, group, sim, state, value). |
-|  | `cumulative_incidence ()` | Cumulative incidence over time. |
+|  | `cumulative_incidence()` | Cumulative incidence over time. |
 |  | `sanity_check()` | Verify S + I + R ≈ 1 at each time step. |
-|  | `attack_rate()` | Final attack rate (final R proportions). |
+|  | `attack_rate()` | Cumulative AR using flows (prefers cases, else incidence); scalar/vector for single-pop; [sims × groups] matrix for multi-pop stochastic; falls back to final R proportion only if flows absent. |
 |  | `reff_from_sim()` | Calculate effective reproduction number over time. |
+|  | `check_contact()` | Quick diagnostics for contact matrices. |
+|  | `reff_from_sim()` | Effective reproduction metric from simulated paths. |
 
 # Example
 
@@ -137,6 +139,8 @@ plot_stoch(stoch_D, which = "SIR")
 ```
 ![](images/op3.png)
 
+Tidy output for downstream analysis:
+
 Stochastic model will return a long list so we can use `to_tidy()` to convert it to a tidy data frame table for further analysis:<br>
 * **Time:** simulation date.<br>
 * **Group:** populations size.<br>
@@ -150,6 +154,22 @@ to_tidy(stoch_D)
 ![](images/op4.png)
 
 For more other examples, please check the `User-Demo.Rmd` file in the repository.
+
+Reproducibility:
+
+- Fixed seeds: single-pop `seed = 42`; multi-pop examples `mp_seed = 99`.
+
+- One-command rebuild: run `scripts/make_plots.R` to regenerate all figures into `plots/`:
+
+    - `det_sir.png`, `det_incidence.png`, `seasonal_sir.png`,
+
+    - `stoch_sir.png`, `stoch_incidence.png`,
+
+    - `multi_S_combined.png`, `multi_I_facet.png`, `multi_incidence_combined.png`.
+
+Scripts
+
+`scripts/make_plots.R` — sources `R/`, runs deterministic/seasonal/stochastic/multi-pop scenarios, writes the PNGs listed above.
 
 ## Note
 

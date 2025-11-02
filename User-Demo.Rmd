@@ -70,6 +70,12 @@ ribbon_probs <- c(0.025, 0.975)
 my_pop_cols <- c("#E41A1C", "#377EB8", "#4DAF4A")
 ```
 
+```{r}
+# Show seeds so users can see reproducibility settings
+cat(sprintf("Seeds — single-pop: %d | multi-pop: %d\n", seed, mp_seed))
+```
+
+
 ## Load package functions
 ```{r}
 # Please ensure you have "R" file in your working directory
@@ -114,6 +120,18 @@ stoch_C$params$ribbon_probs <- ribbon_probs
 # plot options: "overlay", "SIR", "incidence", "both"
 plot_stoch(stoch_C, which = "SIR")
 ```
+### Attack rate and Reff (single-pop)
+
+```{r}
+# Attack rate (single-pop stochastic): vector length = n_sims
+ar_C <- attack_rate(stoch_C)
+head(ar_C)
+
+# Reff from simulated paths (helper)
+reff_C <- reff_from_sim(stoch_C)
+head(reff_C)
+```
+
 
 ## D - Stochastic model with seasonal beta(Single population)
 ```{r}
@@ -169,7 +187,25 @@ simF$params$ribbon_probs <- ribbon_probs
 plot_multi(simF, which = "I", group_style = "combined")
 ```
 
+### Per-million toggle, attack-rate matrix, Reff
 
+```{r}
+# Compare incidence scaling
+
+plot_multi(simF, which = "incidence", group_style = "combined", per_million = TRUE)
+plot_multi(simF, which = "incidence", group_style = "combined", per_million = FALSE)
+
+# Attack rate (multi-pop stochastic): matrix [n_sims x n_groups]
+
+ar_F <- attack_rate(simF)
+dim(ar_F)
+ar_F[1:5, ]
+
+# Reff helper (deterministic multi-pop)
+
+reff_E <- reff_from_sim(simE)
+head(reff_E)
+```
 
 ## H - Dashboards with self arrangement
 ```{r warning=FALSE, message=FALSE}
@@ -243,29 +279,4 @@ beta_seasonal <- make_beta(
   phase = 30            # Phase shift in days
 )
 
-ggplot(data = data.frame(day = 1:365, beta = beta_seasonal), aes(x = day, y = beta)) +
-  geom_line(color = "blue") +
-  labs(title = "Seasonal Beta over Time", x = "Day", y = "Beta") +
-  theme_minimal()
-```
-
-### `adjust_beta`Scale beta within specified day windows.
-```{r}
-B <- adjust_beta(rep(0.2, 365),                 # Initial beta vector
-                 data.frame(start=50, end=80),  # Day windows to adjust
-                 0.7)                           # Scaling factors
-
-ggplot(data = data.frame(day = 1:365, beta = B), aes(x = day, y = beta)) +
-  geom_line(color = "red") +
-  labs(title = "Beta over Time", x = "Day", y = "Beta") +
-  theme_minimal()
-```
-
-### `cumulative_incidence()`Calculate cumulative incidence over time.
-
-```{r}
-ci_F <- cumulative_incidence(simF)
-
-# The table is large; show first 10 rows
-head(ci_F,10)
-```
+g
