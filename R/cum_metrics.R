@@ -1,69 +1,60 @@
-#' cumulative_incidence
-#' @title Cumulative incidence over time
-#' @description
-#' Returns cumulative sums of daily infections (counts), handling each sim shape:
-#' - deterministic single-pop (`incidence` vector)
-#' - stochastic (`cases` matrix [time x sims])
-#' - multi-pop (`incidence` matrix [time x groups])
-#' @param sim A simulation output.
-#' @return data.frame with `time` and `cum_incidence` (+ `sim`/`group` if present).
-#' @examples
-#' # ci <- cumulative_incidence(sim); head(ci)
-
+# =============================================================================
 # Project: Kids Research Institute — SIRS modelling
-# Script: R/cum_metrics.R
-# Purpose: Compute cumulative incidence and final attack rate
-# Inputs: sim (deterministic | stochastic | multi-pop)
-# Outputs: data.frame(time, cum_incidence) and numeric attack rate(s)
+# File   : R/cum_metrics.R
+# Purpose: Cumulative incidence and attack-rate helpers
+# Inputs : sim (deterministic | stochastic | multi-pop; single or multi-run)
+# Outputs:
+#   - cumulative_incidence(sim) -> data.frame with time and cum_* plus
+#     optional columns: sim (simulation index) and/or group (group index)
+#   - attack_rate(sim)          -> scalar / vector / matrix (see below)
+# Notes : Pure base R (no dplyr). ASCII only.
+# =============================================================================
 
+# Small helper: x %||% y  -> return x unless it's NULL
+`%||%` <- function(x, y) if (is.null(x)) y else x
+
+# Internal: extract population vector per group (or scalar for single-pop)
+.get_pop_vec <- function(sim) {
+  # Prefer explicit vector if present
+  pv <- sim$params$pop_vec %||% sim$pop_vec
+  if (!is.null(pv)) return(as.numeric(pv))
+  
+  # Fall back to scalar pop in params or top-level
+  p  <- sim$params$pop %||% sim$pop
+  if (!is.null(p)) return(as.numeric(p))
+  
+  # Last resort: 1 (prevents division by zero)
+  1
+}
+
+# -----------------------------------------------------------------------------
+# cumulative_incidence()
+# -----------------------------------------------------------------------------
+# Returns cumulative sums of daily infections (preferred: 'incidence').
+# If 'incidence' is absent, falls back to 'cases' (reported).
+# Shapes handled:
+# - deterministic single-pop: vector [time]
+# - deterministic multi-pop : matrix [time x groups]
+# - stochastic single-pop   : matrix [time x sims]
+# - stochastic multi-pop    : array  [time x sims x groups]
+#
+# Output is always a data.frame with columns:
+# - time
+# - cum_incidence  (or cum_cases if incidence absent)
+# - optional: sim (for stochastic), group (for multi-pop)
+# -----------------------------------------------------------------------------
 cumulative_incidence <- function(sim) {
-  # Deterministic single-pop
-  if (!is.null(sim$incidence) && is.vector(sim$incidence) && is.null(sim$cases)) {
-    return(data.frame(time = sim$time, cum_incidence = cumsum(sim$incidence)))
-  }
-  # Stochastic multi-run
-  if (!is.null(sim$cases)) {
-    ci <- apply(sim$cases, 2, cumsum)  # [time x sims]
-    out <- lapply(seq_len(ncol(ci)), function(j) {
-      data.frame(time = sim$time, sim = j, cum_incidence = ci[, j])
-    })
-    return(do.call(rbind, out))
-  }
-  # Multi-pop deterministic
-  if (!is.null(sim$incidence) && is.matrix(sim$incidence)) {
-    ci <- apply(sim$incidence, 2, cumsum)  # [time x groups]
-    out <- lapply(seq_len(ncol(ci)), function(g) {
-      data.frame(time = sim$time, group = g, cum_incidence = ci[, g])
-    })
-    return(do.call(rbind, out))
-  }
-  stop("Unrecognized sim structure for cumulative_incidence().")
-}
-
-#' attack_rate
-#' @title Final attack rate (approx. proportion infected at the end)
-#' @description
-#' Uses the final recovered proportion R(T) as an attack-rate proxy.
-#' Returns a scalar (single-pop), a vector over sims (stochastic), or a vector
-#' over groups (multi-pop).
-#' @param sim A simulation output.
-#' @return Numeric scalar or vector of final R proportions.
-#' @examples
-#' # ar <- attack_rate(sim)
-attack_rate <- function(sim) {
-  # Deterministic single-pop
-  if (!is.null(sim$R) && is.vector(sim$R) && is.null(sim$proportions)) {
-    return(tail(sim$R, 1))
-  }
-  # Stochastic multi-run
-  if (!is.null(sim$proportions)) {
-    M <- dim(sim$proportions)[2]
-    return(sapply(seq_len(M), function(j) tail(sim$proportions[, j, "R"], 1)))
-  }
-  # Multi-pop deterministic
-  if (!is.null(sim$R) && is.matrix(sim$R)) {
-    G <- ncol(sim$R)
-    return(sapply(seq_len(G), function(g) tail(sim$R[, g], 1)))
-  }
-  stop("Unrecognized sim structure for attack_rate().")
-}
+  use_field <- if (!is.null(sim$incidence)) "incidence" else if (!is.null(sim$cases)) "cases" else NULL
+  if (is.null(use_field)) stop("No 'incidence' or 'cases' found in sim for cumulative_incidence().")
+  
+  x <- sim[[use_field]]
+  nm <- if (use_field == "incidence") "cum_incidence" else "cum_cases"
+  
+  # 1) Vector [time]
+  if (is.vector(x) && is.null(dim(x))) {
+    return(data.frame(
+      time = sim$time,
+      ..tmp.. = cumsum(as.numeric(x))
+      , check.names = FALSE, fix.empty.names = FALSE,
+      row.names = NULL, stringsAsFactors = FALSE)[, c("time", "..tmp.."),
+                                
