@@ -81,7 +81,6 @@ R.utils::sourceDirectory("R/")
 |  | `cumulative_incidence()` | Cumulative incidence over time. |
 |  | `sanity_check()` | Verify S + I + R ≈ 1 at each time step. |
 |  | `attack_rate()` | Cumulative AR using flows (prefers cases, else incidence); scalar/vector for single-pop; [sims × groups] matrix for multi-pop stochastic; falls back to final R proportion only if flows absent. |
-|  | `reff_from_sim()` | Calculate effective reproduction number over time. |
 |  | `check_contact()` | Quick diagnostics for contact matrices. |
 |  | `reff_from_sim()` | Effective reproduction metric from simulated paths. |
 
