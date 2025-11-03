@@ -279,4 +279,31 @@ beta_seasonal <- make_beta(
   phase = 30            # Phase shift in days
 )
 
-g
+ggplot(data = data.frame(day = 1:365, beta = beta_seasonal), aes(x = day, y = beta)) +
+geom_line() +
+labs(title = "Seasonal Beta over Time", x = "Day", y = "Beta") +
+theme_minimal()
+```
+### `adjust_beta()` Scale beta within specified day windows
+```{r}
+B <- adjust_beta(
+rep(0.2, 365), # Initial beta vector
+data.frame(start = 50, end = 80), # Day windows to adjust
+0.7 # Scaling factor
+)
+
+ggplot(data = data.frame(day = 1:365, beta = B), aes(x = day, y = beta)) +
+geom_line() +
+labs(title = "Beta over Time", x = "Day", y = "Beta") +
+theme_minimal()
+```
+
+### `cumulative_incidence()` Calculate cumulative incidence over time
+
+```{r}
+ci_F <- cumulative_incidence(simF)
+
+# The table is large; show first 10 rows
+
+head(ci_F, 10)
+```
