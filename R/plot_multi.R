@@ -153,6 +153,7 @@ plot_multi <- function(
       check.names = FALSE
     )
   }
+  
   .build_SIR_panel <- function(state_name, det_df, band_df, ylab, P,
                                group_style = c("facet","combined"), cols = NULL, show_bands = TRUE){
     stopifnot(state_name %in% c("S","I","R"))
@@ -160,20 +161,43 @@ plot_multi <- function(
     state_col <- unname(STATE_COLS[[state_name]])
     single_pop <- (P == 1)
     
+    # ---- combined branch ----
     if (group_style == "combined" && !single_pop){
       p <- ggplot2::ggplot()
-      if (.not_blank_df(det_df)) {
-        p <- p + ggplot2::geom_line(data = det_df, ggplot2::aes(time, .data[[state_name]], color = pop), linewidth = 0.9) +
-          ggplot2::scale_color_manual(values = cols, drop = FALSE, name = "Population")
-      } else if (.not_blank_df(band_df)) {
-        p <- p + ggplot2::geom_line(data = band_df, ggplot2::aes(time, mean, color = pop), linewidth = 0.9) +
-          ggplot2::scale_color_manual(values = cols, drop = FALSE, name = "Population")
+      
+      if (.not_blank_df(band_df)) {
+        if (show_bands) {
+          p <- p + ggplot2::geom_ribbon(
+            data = band_df,
+            ggplot2::aes(time, ymin = qL, ymax = qU, fill = pop),
+            alpha = 0.25, inherit.aes = FALSE
+          )
+        }
+        p <- p + ggplot2::geom_line(
+          data = band_df, ggplot2::aes(time, mean, color = pop),
+          linewidth = 0.9, inherit.aes = FALSE
+        )
       }
-      return(p + ggplot2::labs(title = paste0(state_name, "(t)"), x = "Day", y = ylab) +
-               ggplot2::theme_minimal(base_size = 11) +
-               ggplot2::theme(plot.title = ggplot2::element_text(hjust = 0.5)))
+      
+      if (.not_blank_df(det_df)) {
+        p <- p + ggplot2::geom_line(
+          data = det_df, ggplot2::aes(time, .data[[state_name]], color = pop),
+          linewidth = 0.9, inherit.aes = FALSE
+        )
+      }
+      
+      return(
+        p +
+          ggplot2::scale_color_manual(values = cols, drop = FALSE, name = "Population") +
+          ggplot2::scale_fill_manual(values = stats::setNames(.alpha(cols, 0.25), names(cols)),
+                                     drop = FALSE, name = "Population") +
+          ggplot2::labs(title = paste0(state_name, "(t)"), x = "Day", y = ylab) +
+          ggplot2::theme_minimal(base_size = 11) +
+          ggplot2::theme(plot.title = ggplot2::element_text(hjust = 0.5))
+      )
     }
     
+    # facet or single-pop branch
     p <- ggplot2::ggplot()
     if (.not_blank_df(band_df)) {
       if (show_bands) {
@@ -236,11 +260,10 @@ plot_multi <- function(
   }
   cols <- .resolve_pop_cols(P, pop_names, pop_cols_arg = pop_cols)
   
-  
   inc_lab <- if (per_million) "Daily cases (per million)" else "Daily cases"
   s_lab <- "S proportion"; i_lab <- "I proportion"; r_lab <- "R proportion"
   
-  # deterministic melts (create S/I/R/cases columns)
+  # deterministic melts
   S_det <- I_det <- R_det <- Inc_det <- NULL
   if (has_det) {
     S_det <- .melt_mat(sim$S, time, "S", pop_names)

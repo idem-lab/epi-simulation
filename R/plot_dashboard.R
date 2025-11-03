@@ -120,7 +120,7 @@ plot_dashboard <- function(sim,
         if (!is.null(Inc)) Inc <- matrix(Inc[,1], T, P_sto)
         P_det <- P_sto
       } else if (P_sto==1 && P_det>1){
-        prop  <- array(prop,  dim=c(T, dim(prop)[2],  P_det, dim(prop)[4])); for (p in seq_len(P_det)) prop[,,p,] <- prop[,,1,]
+        prop  <- array(prop,  dim=c(T, dim(prop)[2],  P_det, dim(prop)[4])); for (p in seq_len(P_det)) prop[,,p,] <- prop[,,1]
         cases <- array(cases, dim=c(T, dim(cases)[2], P_det));              for (p in seq_len(P_det)) cases[,,p]   <- cases[,,1]
         P_sto <- P_det
       } else stop(sprintf("Population mismatch (det P=%s vs stoch P=%s).", P_det, P_sto))
@@ -177,20 +177,45 @@ plot_dashboard <- function(sim,
     state_col <- unname(STATE_COLS[[state_name]])
     single_pop <- (P==1)
     
+    # ---- UPDATED combined branch: add ribbons + fill scale ----
     if (group_style=="combined" && !single_pop){
       p <- ggplot2::ggplot()
-      if (.not_blank_df(det_df)) {
-        p <- p + ggplot2::geom_line(data=det_df, ggplot2::aes(time, .data[[state_name]], color=pop), linewidth=0.9) +
-          ggplot2::scale_color_manual(values=cols, drop=FALSE, name="Population")
-      } else if (.not_blank_df(band_df)) {
-        p <- p + ggplot2::geom_line(data=band_df, ggplot2::aes(time, mean, color=pop), linewidth=0.9) +
-          ggplot2::scale_color_manual(values=cols, drop=FALSE, name="Population")
+      
+      if (.not_blank_df(band_df)) {
+        if (show_bands) {
+          p <- p + ggplot2::geom_ribbon(
+            data = band_df,
+            ggplot2::aes(time, ymin = qL, ymax = qU, fill = pop),
+            alpha = 0.25, inherit.aes = FALSE
+          )
+        }
+        p <- p + ggplot2::geom_line(
+          data = band_df,
+          ggplot2::aes(time, mean, color = pop),
+          linewidth = 0.9, inherit.aes = FALSE
+        )
       }
-      return(p + ggplot2::labs(title=paste0(state_name,"(t)"), x="Day", y=ylab) +
-               ggplot2::theme_minimal(base_size=11) +
-               ggplot2::theme(plot.title=ggplot2::element_text(hjust=0.5)))
+      
+      if (.not_blank_df(det_df)) {
+        p <- p + ggplot2::geom_line(
+          data = det_df,
+          ggplot2::aes(time, .data[[state_name]], color = pop),
+          linewidth = 0.9, inherit.aes = FALSE
+        )
+      }
+      
+      return(
+        p +
+          ggplot2::scale_color_manual(values = cols, drop = FALSE, name = "Population") +
+          ggplot2::scale_fill_manual(values = stats::setNames(.alpha(cols, 0.25), names(cols)),
+                                     drop = FALSE, name = "Population") +
+          ggplot2::labs(title = paste0(state_name,"(t)"), x = "Day", y = ylab) +
+          ggplot2::theme_minimal(base_size = 11) +
+          ggplot2::theme(plot.title = ggplot2::element_text(hjust = 0.5))
+      )
     }
     
+    # facet or single-pop branch
     p <- ggplot2::ggplot()
     if (.not_blank_df(band_df)) {
       if (show_bands) {
@@ -228,7 +253,7 @@ plot_dashboard <- function(sim,
   inc_lab <- if (per_million) "Daily cases (per million)" else "Daily cases"
   s_lab <- "S proportion"; i_lab <- "I proportion"; r_lab <- "R proportion"
   
-  # Deterministic
+  # Deterministic melts
   S_det <- if (has_det) .melt_mat(sim$S, time, "S", pop_names) else NULL
   I_det <- if (has_det) .melt_mat(sim$I, time, "I", pop_names) else NULL
   R_det <- if (has_det) .melt_mat(sim$R, time, "R", pop_names) else NULL
@@ -394,7 +419,8 @@ arrange_dashboard <- function(plots, layout=c(2,3), collect_legend=TRUE){
   if (!requireNamespace("patchwork", quietly=TRUE)) stop("arrange_dashboard() needs {patchwork}.")
   if (!requireNamespace("ggplot2", quietly=TRUE))  stop("arrange_dashboard() needs {ggplot2}.")
   stopifnot(is.list(plots), length(layout)==2)
-  pw <- patchwork::wrap_plots(plots, nrow=layout[1], ncol=layout[2], guides=if (collect_legend) "collect" else "auto", byrow=TRUE)
+  pw <- patchwork::wrap_plots(plots, nrow=layout[1], ncol=layout[2],
+                              guides=if (collect_legend) "collect" else "auto", byrow=TRUE)
   if (collect_legend) pw <- pw & ggplot2::theme(legend.position="right")
   pw
 }
