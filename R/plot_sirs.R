@@ -1,50 +1,47 @@
-#' @title Plot SIR trajectories and/or incidence diagnostics
-#'
-#' @description
-#' Produce diagnostic plots from a single-population SIR/SIRS simulation:
-#' - `"sir"`: S / I / R proportions over time
-#' - `"incidence"`: daily new infections (counts)
-#' - `"both_side"`: S/I/R and incidence side by side
-#' - `"overlay"`: S/I/R plus incidence on a secondary y-axis
-#'
-#' @param sim A list-like simulation object with numeric vectors:
-#'   `time`, `S`, `I`, `R`, and `incidence` (all same length).
-#' @param which Character. One of
-#'   `c("both_side","overlay","sir","incidence")`.
-#'
-#' @return A ggplot (for "sir", "incidence", "overlay") or a patchwork object
-#'   (for "both_side"). This makes it easy to print, save with `ggsave()`,
-#'   or combine with other plots. No invisible(NULL).
-#'
-#' @examples
-#' # Minimal reproducible example
-#' set.seed(1)
-#' t <- 1:120
-#' S <- pmax(0, 1 - 0.6*(1 - exp(-t/60)))
-#' I <- pmax(0, 0.15*exp(-(t-40)^2/800))
-#' R <- pmax(0, 1 - S - I)
-#' inc <- pmax(0, round(diff(c(0, I))*1000 + rnorm(length(t), 0, 2)))
-#' sim <- list(time = t, S = S, I = I, R = R, incidence = inc)
-#'
-#' p1 <- plot_sirs(sim, which = "sir")
-#' p2 <- plot_sirs(sim, which = "incidence")
-#' p3 <- plot_sirs(sim, which = "both_side")
-#' p4 <- plot_sirs(sim, which = "overlay")
-#'
-#' @export
 plot_sirs <- function(
     sim,
-    which = c("both_side","overlay","sir","incidence")
+    which = c("both_side","overlay","sir","incidence"),
+    per_million = FALSE
 ) {
-  # ---- pick mode ----
   which <- match.arg(which)
   
-  # ---- basic checks ----
+  # ---- basic checks for required series ----
   need <- c("time","S","I","R","incidence")
   miss <- setdiff(need, names(sim))
   if (length(miss)) stop("sim is missing: ", paste(miss, collapse=", "))
   
-  # coerce to data.frames we can ggplot
+  # ---- get pop from sim$params$pop if needed ----
+  if (per_million) {
+    pop_ok <-
+      !is.null(sim$params$pop) &&
+      is.numeric(sim$params$pop) &&
+      length(sim$params$pop) == 1 &&
+      is.finite(sim$params$pop) &&
+      sim$params$pop > 0
+    
+    if (!pop_ok) {
+      stop(
+        "per_million = TRUE but sim$params$pop is not a single positive number.\n",
+        "Please make sure sim$params$pop exists and is > 0."
+      )
+    }
+    
+    pop_val <- sim$params$pop
+  } else {
+    pop_val <- NA_real_  # won't be used
+  }
+  
+  # ---------------------------------
+  # prepare data, scale incidence if requested
+  # ---------------------------------
+  if (per_million) {
+    incidence_val <- (sim$incidence / pop_val) * 1e6
+    incidence_label <- "new infections"
+  } else {
+    incidence_val <- sim$incidence
+    incidence_label <- "new infections (count)"
+  }
+  
   df_sir <- data.frame(
     time = sim$time,
     S    = sim$S,
@@ -54,10 +51,10 @@ plot_sirs <- function(
   
   df_inc <- data.frame(
     time      = sim$time,
-    incidence = sim$incidence
+    incidence = incidence_val
   )
   
-  # long format for S/I/R (for nice legend)
+  # long format for S/I/R
   df_long <- tidyr::pivot_longer(
     df_sir,
     cols = c("S","I","R"),
@@ -73,11 +70,11 @@ plot_sirs <- function(
   )
   
   # ---------------------------
-  # base plot pieces
+  # p_sir (S, I, R proportions)
   # ---------------------------
-  
-  p_sir <- ggplot2::ggplot(df_long,
-                           ggplot2::aes(x = time, y = value, colour = state)
+  p_sir <- ggplot2::ggplot(
+    df_long,
+    ggplot2::aes(x = time, y = value, colour = state)
   ) +
     ggplot2::geom_line(linewidth = 1) +
     ggplot2::scale_colour_manual(values = state_cols, name = NULL) +
@@ -92,13 +89,17 @@ plot_sirs <- function(
       plot.title = ggplot2::element_text(face = "bold")
     )
   
-  p_inc <- ggplot2::ggplot(df_inc,
-                           ggplot2::aes(x = time, y = incidence)
+  # ---------------------------
+  # p_inc (incidence panel)
+  # ---------------------------
+  p_inc <- ggplot2::ggplot(
+    df_inc,
+    ggplot2::aes(x = time, y = incidence)
   ) +
     ggplot2::geom_line(linewidth = 1) +
     ggplot2::labs(
       x = "day",
-      y = "new infections (count)",
+      y = incidence_label,
       title = "Daily incidence"
     ) +
     ggplot2::theme_minimal() +
@@ -107,25 +108,15 @@ plot_sirs <- function(
     )
   
   # ---------------------------
-  # overlay plot with 2nd axis
+  # p_overlay (dual axis)
   # ---------------------------
-  # We'll rescale incidence to [0,1] range so it can sit on top of S/I/R.
-  # Then we add a secondary axis that maps it back to counts.
+  # For overlay: rescale incidence to [0,1] so it sits on same panel
+  # as S/I/R proportions. Then expose a secondary axis that maps back.
   max_inc <- max(df_inc$incidence, na.rm = TRUE)
   if (!is.finite(max_inc) || max_inc == 0) {
-    max_inc <- 1  # avoid divide-by-zero
+    max_inc <- 1
   }
   
-  df_overlay <- dplyr::left_join(
-    df_long,
-    df_inc,
-    by = "time"
-  )
-  df_overlay$incidence_scaled <- df_overlay$incidence / max_inc
-  
-  # We'll plot two geoms:
-  # - lines for S/I/R (coloured)
-  # - line for incidence_scaled (grey/black)
   p_overlay <- ggplot2::ggplot() +
     # S / I / R
     ggplot2::geom_line(
@@ -133,7 +124,7 @@ plot_sirs <- function(
       ggplot2::aes(x = time, y = value, colour = state),
       linewidth = 1
     ) +
-    # incidence on rescaled axis
+    # scaled incidence
     ggplot2::geom_line(
       data = df_inc,
       ggplot2::aes(
@@ -141,7 +132,7 @@ plot_sirs <- function(
         y = incidence / max_inc
       ),
       linewidth = 1,
-      colour = "grey40"
+      colour = "grey60"
     ) +
     ggplot2::scale_colour_manual(values = state_cols, name = NULL) +
     ggplot2::scale_y_continuous(
@@ -149,7 +140,7 @@ plot_sirs <- function(
       limits = c(0,1),
       sec.axis = ggplot2::sec_axis(
         ~ . * max_inc,
-        name = "incidence (count)"
+        name = incidence_label
       )
     ) +
     ggplot2::labs(
@@ -164,9 +155,8 @@ plot_sirs <- function(
     )
   
   # ---------------------------
-  # return based on `which`
+  # return view
   # ---------------------------
-  
   if (which == "sir") {
     return(p_sir)
   }
@@ -176,6 +166,7 @@ plot_sirs <- function(
   }
   
   if (which == "both_side") {
+    # use patchwork to arrange without relying on +
     p_both <- patchwork::wrap_plots(
       p_sir,
       p_inc,
@@ -184,11 +175,9 @@ plot_sirs <- function(
     return(p_both)
   }
   
-  
   if (which == "overlay") {
     return(p_overlay)
   }
   
-  # should never get here
   stop("Internal error: unknown 'which' mode")
 }
