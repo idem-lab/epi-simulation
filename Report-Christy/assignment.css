@@ -1,0 +1,46 @@
+@import url('https://fonts.googleapis.com/css2?family=Karla:ital,wght@0,400;0,700;1,400;1,700&family=PT+Sans+Narrow:wght@400;700&display=swap');
+
+* {
+  font-family: 'Karla', sans-serif;
+  font-weight: 400;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "PT Sans Narrow", sans-serif;
+  font-weight: 700;
+  color: #027EB6;
+}
+
+h1 {
+    color: #006DAE;
+}
+
+/* Quarto code block wrapper */
+div.sourceCode {
+  border-left: 4px solid  #027EB6; /* code-block-border-left */
+  padding-left: 0.75rem;
+  background: #f8f9fa;           /* code-block-bg effect */
+}
+
+/* Keep the inner <pre> background transparent so wrapper shows */
+div.sourceCode pre,
+pre.sourceCode,
+pre > code {
+  background: transparent;
+}
+
+/* Optional: inline code look */
+code:not(pre code) {
+  background: #f3f6f8;
+  padding: .15em .35em;
+  border-radius: 4px;
+}
+
+/* Size & color of code-links icons */
+.quarto-code-links .bi {
+  width: 1.1em;
+  height: 1.1em;
+  fill: #24292e; /* GitHub dark gray */
+  vertical-align: -0.125em;
+}
+

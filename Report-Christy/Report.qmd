@@ -1,0 +1,1150 @@
+---
+title: "Epidemic Model Simulation - SIRS Model"
+subtitle: "A lightweight, ready-to-use Package"
+author: "Wing Hei (Christy) Lai"
+date: "3 November 2025"
+bibliography: references.bib
+title-block-banner: image/banner.jpg
+
+format:
+  html:
+    output-file: ETC5543-Report_Christy.html
+    toc: true
+    code-fold: true
+    code-links:
+      - text: GitHub/epi-simulation
+        icon: github
+        href: https://github.com/idem-lab/epi-simulation.git
+      - text: Report an issue
+        href: https://github.com/idem-lab/epi-simulation/issues
+    css: assignment.css
+---
+
+
+```{r include=FALSE, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(kableExtra)
+library(plotly)
+library(DT)
+library(R.utils)
+```
+
+```{r include=FALSE}
+# ---- EDIT YOUR INPUTS HERE -------------------
+# Common components
+n_times <- 60      # Total days to simulate
+pop     <- 100000  # Population size
+I_init  <- 10      # Initial number of infectious individuals
+beta    <- 0.75    # Transmission rate  
+gamma   <- 1/7     # Recovery rate
+omega   <- 1/30    # Rate of loss of immunity(R -> S)
+
+
+# Seasonal beta (for B, D)
+season_base  <- 0.70   # Base transmission rate
+season_amp   <- 0.25   # Amplitude of seasonal variation (0 ≤ amplitude < 1)
+season_phase <- 30     # Phase shift in days
+
+# Stochastic (C,D,F)
+n_sims   <- 200   # Number of independent simulation runs (columns).
+epsilon  <- 1e-4  # External infection pressure.
+alpha    <- 0.3   # Reporting rate
+seed     <- 42    # Random seed for reproducibility
+
+# Multi-pop (E, F)
+mp_n_times <- 180                     # Total days to simulate
+mp_pops    <- c(100000, 500, 200000)  # Population sizes
+mp_Iinit   <- c(100, 5, 1000)         # Initial infectious individuals
+mp_beta    <- 0.20                    # Transmission rate
+mp_gamma   <- 1/7                     # Recovery rate
+mp_omega   <- 1/30                    # Rate of loss of immunity(R -> S)
+
+# Multi-pop stochastic (F)
+mp_sims    <- 200      # Number of stochastic simulations
+mp_epsilon <- 0        # Noise parameter
+mp_alpha   <- NULL     # Scaling factor for stochasticity
+mp_seed    <- 99       # Random seed for reproducibility
+
+# Customise uncertainty ribbons(Default to 95%)
+ribbon_probs <- c(0.025, 0.975)
+
+# Customise colors for multiple populations
+my_pop_cols <- c("#E41A1C", "#377EB8", "#4DAF4A")
+
+# Load the functions
+R.utils::sourceDirectory("../R/")
+```
+
+# Abstract
+
+To develop a ready-to-use R package for fast, reproducible SIRS (Susceptible–Infectious–Recovered–Susceptible) simulations that support rapid scenario exploration during outbreaks.
+
+We implement discrete-time deterministic and stochastic SIRS models (single and multi-population) with constant or seasonal ($\beta_t$), simple intervention windows that scale transmission, and tidy long-format outputs for downstream analysis. Stochastic runs use binomial transitions to quantify uncertainty; results are presented with quantile ribbons and summary metrics (peak infected, peak incidence, final recovered). A lightweight R Markdown demo lets users edit inputs and reproduce all examples; an exploratory dashboard supports quick visual comparisons (not a final product). The work is conducted with The Kids Research Institute (Australia), under The Infectious Disease Ecology and Modelling(IDEM) team.
+
+We use simulated scenarios(no external datasets) to illustrate typical outbreak dynamics and policy-style “what-if” comparisons.
+
+Across scenarios, the package generates standardised and comparable scriptable outputs that are easy to compare and share. Seasonal $\beta_t$ produces recurrent waves; simple interventions (reducing $\beta_t$ lower and delay peaks; increasing waning $\omega$ shortens inter-wave intervals. Uncertainty ribbons clearly communicate plausible ranges, narrowing with stronger control or larger populations. Multi-population runs enable side-by-side comparisons under common assumptions.
+
+The package provides a simple, fast, and reproducible baseline for outbreak scenario analysis: accessible to non-coders via the demo, extensible for analysts, and suitable for rapid, defensible communication of results and uncertainty.
+
+# Introduction
+
+Rapid, transparent epidemic modelling is essential when an outbreak begins: assumptions change quickly, information is incomplete, and decisions cannot wait. This project develops `epi-simulation`, a ready-to-use R package that implements SIRS (Susceptible–Infected–Recovered–Susceptible) dynamics for fast, reproducible scenario analysis. The package unifies deterministic and stochastic simulations across single and multi-population settings, supports time-varying transmission(constant/seasonal $\beta_t$ and simple intervention windows), and produces tidy outputs with publication-quality plots (S/I/R panels, daily incidence, and deterministic-vs-stochastic overlays with uncertainty ribbons). A lightweight dashboard is included for exploration only—the emphasis is a robust modelling core and scripted, reproducible workflows rather than a finished app.
+
+This work is conducted in collaboration with The Kids Research Institute (Australia), within the Infectious Disease Ecology and Modelling (IDEM) team. IDEM team uses modelling and maps to measure risk for high-impact and neglected infectious diseases (including COVID-19) and provides rapid analyses to policymakers. Our contribution is a clean, extensible SIRS package that helps teams move from basic assumptions to comparable trajectories—and to communicate uncertainty—quickly and clearly.
+
+# Background & motivation
+
+The COVID-19 pandemic showed that when an outbreak begins, time is everything. Assumptions shift by the day, data are incomplete, and decision-makers need plausible scenarios fast. In practice, modellers now use many different tools with inconsistent input names and column formats, which makes outputs inconsistent, hard to reuse, and hard to compare across regions or interventions. That fragmentation slows the exact work that must be quickest: turning basic assumptions into clear trajectories and uncertainty ranges that can inform action.
+
+Our project responds to this with a simple, fast, reproducible approach: a unified R package that standardises inputs, simulations, and outputs so teams can generate like-for-like scenarios in minutes, not days. The emphasis is on clarity, comparability, and scripted workflows that others can repeat and extend.
+
+## Methodologically, what we do
+
+- **Clear, separate functions + an easy demo:** deterministic vs stochastic, and single- vs multi-population, are provided as separate functions for clarity; an R Markdown demo lets users just edit inputs and run all examples end-to-end without wiring code together.
+
+- **Time-varying scenarios:** support for simple transmission patterns (constant/seasonal) and intervention windows to reflect rapid policy changes.
+
+- **Uncertainty first-class:** stochastic quantile ribbons and summary tables (e.g., peak timing/magnitude) so results show ranges, not just a single line.
+
+- **Tidy, reproducible outputs:** return tables and scripted figure generation for easy comparison, version control, and downstream analysis.
+
+- **Exploration, not a final app:** an optional lightweight dashboard to compare scenarios quickly, while the core deliverable remains code you can rerun.
+
+## Who benefits
+
+- **Learners / non-coders:** run outbreak scenarios by editing a few parameters in the `User-Demo.Rmd` and immediately see trajectories and uncertainty.
+
+- **Analysts & researchers:** consistent, tidy outputs enable rapid iteration, sensitivity checks, and integration into larger pipelines.
+
+- **Policy teams & advisors:** fast, side-by-side comparisons of interventions or regions to support timely, defensible decisions.
+
+# SIRS Model
+The SIRS model(@SIRS) is a type of mathematical model used in epidemiology to describe the dynamics of an infectious disease in a population by dividing it into three compartments:
+
+- **Susceptible(S)** means who have no immunity from the disease.
+
+- **Infectious(I)** means who have the disease and can spread it to susceptibles.
+
+- **Recovered (R)** means who have recovered from the disease and are immune.
+
+```{r echo=FALSE}
+#| label: fig-sirs
+#| fig-cap: "SIRS Model. Source: Christy Lai (2025)."
+#| fig-alt: "Three-box diagram with arrows S→I→R→S"
+knitr::include_graphics("image/SIRS.png")
+
+```
+
+
+The SIRS model extends the basic SIR model by allowing individuals in the Recovered (R) compartment to lose their immunity over time and return to the Susceptible (S) compartment. This is particularly relevant for diseases where immunity is not lifelong, such as influenza or certain strains of coronavirus.
+
+**Think of it as a loop:** people move from S → I → R → S when immunity wanes. This cyclical nature captures the ongoing risk of reinfection in the population.
+
+Three rates drive these movements:
+
+- $\beta$ is the transmission rate, governing how quickly susceptibles become infected.
+
+- $\gamma$ is the recovery rate, determining how fast infectious individuals recover and gain immunity.
+
+- $\omega$ is the rate of loss of immunity, dictating how quickly recovered individuals become susceptible again.
+
+Throughout, $S+I+R$ equals the total population size (we usually work in proportions so $S+I+R=1$).
+
+The SIRS model is typically represented by a set of ordinary differential equations (ODEs) that describe the rates of change for each compartment over time:
+
+
+$$
+\begin{aligned}
+\frac{dS}{dt} &= -\beta SI + \omega R\\
+\frac{dI}{dt} &=  \beta SI - \gamma I\\
+\frac{dR}{dt} &=  \gamma I - \omega R\\
+\end{aligned}
+$$
+The logic is straightforward:
+
+- **Susceptibles (S)** decrease as they get infected ($-\beta SI$) but increase as recovered individuals lose immunity and return to susceptibility ($+\omega R$).
+
+- **Infectious (I)** increase as susceptibles get infected ($+\beta SI$) but decrease as they recover ($-\gamma I$).
+
+- **Recovered (R)** increase as infectious individuals recover ($+\gamma I$) but decrease as they lose immunity and become susceptible again ($-\omega R$).
+
+Assumptions of this baseline SIRS model include:
+
+- **Homogeneous mixing:** everyone has an equal chance of contacting everyone else.
+
+- **Constant population size:** no births, deaths, or migration.
+
+- **Instantaneous transitions:** no delays in moving between compartments.
+
+## Time-varying transmission rate β(t)
+
+In this package, $\beta$ represents the transmission probability. In real outbreaks, that rate doesn’t stay constant. It changes with:
+
+- **Seasonality** (climate, humidity, indoor crowding)
+
+- **Behaviour** (holidays, school terms, work-from-home)
+
+- **Policy** (masking, gathering limits, vaccination campaigns)
+
+- **Pathogen/host factors** (immune waning interacting with behaviour)
+
+Treating $\beta$ as time-varying $\beta_t$, lets us reflect these drivers and ask realistic “what-if” questions (e.g., “What if we reduce contacts by 30% for 4 weeks?”).
+
+### Options we support include:
+
+- **Constant $\beta$:** simplest baseline; good for pedagogy or short horizons.
+
+- **Seasonal $\beta_t$:** smooth oscillation around a base level to mimic seasonal forcing (amplitude < 1, optional phase shift).
+
+- **Intervention windows:**piecewise scaling of $\beta_t$ over specified day ranges to represent policies/behaviour changes.
+
+### Mapping to the code:
+
+- Use `make_beta()` to generate constant or seasonal $\beta_t$. base = average level, amplitude = size of fluctuation (0–1), phase = timing (days).
+
+- Use `adjust_beta()` to scale $\beta_t$ within windows (e.g., reduce by 30% during days 50–80).
+
+:::{.callout-note}
+For more details, example code and plots, please refer to the `make_beta()` and `adjust_beta()` sections in `Helper functions` or the `User-Demo.Rmd` file inside the repository.
+:::
+
+# Package Overview
+
+This package focuses on fast SIRS simulation, clear visualisation, and concise summaries. Functions are grouped into three families:
+
+**Simulators** – deterministic and stochastic engines for single and multi-population settings.
+
+**Plotting** – S/I/R panels, daily incidence, stochastic ribbons, multi-population views, and a lightweight dashboard for quick comparisons.
+
+**Summaries & helpers** – tidy coercion, cumulative incidence, headline metrics (peaks/final size), and utilities to build or adjust beta.
+
+:::{.callout-important}
+The dashboard is not a final product, it helps you to explore and further analysis. The main focus of this package is to provide a robust core set of simulation and plotting functions that can be scripted and reproduced.
+:::
+
+```{r include=FALSE}
+# full catalog tibble ----
+category <- c(
+  "Simulators"," "," "," ",
+  "Plotting"," "," "," "," ",
+  "Summaries & helpers"," "," "," "," "," "," "," "
+)
+
+fn <- c(
+  "`simulate_sirs_det()`",
+  "`simulate_sirs_stoch()`",
+  "`simulate_sirs_multi()`",
+  "`simulate_sirs_multi_stoch()`",
+  "`plot_sirs()`",
+  "`plot_stoch()`",
+  "`plot_multi()`",
+  "`plot_dashboard()` + `arrange_dashboard()`",
+  "`plot_det_vs_stoch()`",
+  "`summarize_sim()`",
+  "`make_beta()`",
+  "`adjust_beta()`",
+  "`to_tidy()`",
+  "`cumulative_incidence()`",
+  "`sanity_check()`",
+  "`attack_rate()`",
+  "`reff_from_sim()`"
+)
+
+desc <- c(
+  "Deterministic single population.",
+  "Stochastic single population (many rounds).",
+  "Deterministic multi-population.",
+  "Stochastic multi-population.",
+  "Single-pop SIR/overlay/incidence views.",
+  "Single-pop Stochastic ribbons/lines & incidence.",
+  "Multi-pop S/I/R/incidence (combined or faceted).",
+  "Build a multi-panel dashboard.",
+  "Compare deterministic vs stochastic outputs.",
+  "Headline outbreak metrics (peaks, final sizes, etc.).",
+  "Create time-varying beta (constant, seasonal).",
+  "Scale beta within specified day windows.",
+  "Coerce outputs to a tidy long table (time, group, sim, state, value).",
+  "Cumulative incidence over time.",
+  "Verify S + I + R ≈ 1 at each time step",
+  "Cumulative attack rate over the simulation horizon",
+  "Calculate effective reproduction number over time."
+)
+
+catalog_tbl <- tibble::tibble(
+  Category    = category,
+  Function    = fn,
+  Description = desc
+)
+
+```
+
+```{r echo=FALSE}
+#| label: tbl-function-catalog
+#| tbl-cap: "Epi-simulation package function catalog"
+kableExtra::kable(catalog_tbl)
+```
+
+@tbl-plotting-options summarises which panels are available in each scenario, depending on the model type.
+```{r echo=FALSE}
+#| label: tbl-plotting-options
+#| tbl-cap: "Plotting options for different scenarios"
+sce <- c("Deterministic", "Stochastic", "Multiple Population", "Dashboard")
+
+opt <- c("SIR, Daily incidence, Overlay, Both", "SIR Daily incidence, Overlay, Both", "S, I, R, Daily incidence", "SIR, S, I, R, Daily incidence, Beta, Parameters")
+
+plotting_tbl <- tibble::tibble(
+  Scenario = sce,
+  Options = opt
+)
+
+kableExtra::kable(plotting_tbl)
+```
+
+:::{.callout-note}
+The functions `plot_det_vs_stoch()`, `attack_rate()`, and `reff_from_sim()` are outside the scope of this document. Readers seeking an in-depth treatment should refer to Varun’s companion report available on [GitHub](https://github.com/idem-lab/epi-simulation.git).
+:::
+
+# Installation
+The development version of epi-simulation can be installed from [GitHub](https://github.com/idem-lab/epi-simulation.git).<br>
+
+First, download the package source code from GitHub.<br>
+
+* Option A - Download ZIP
+
+  - Click Code ▸ Download ZIP, then unzip locally.
+  
+* Option B - Clone via Terminal
+  - Open your RStudio and paste the following into Terminal.
+
+```{r eval = FALSE}
+#| code-fold: show
+git clone https://github.com/idem-lab/epi-simulation.git
+cd epi-simulation
+```
+
+Then Open the `epi-simulation.Rproj` file to load the project in RStudio.<br>
+
+Next, load the functions in R:
+
+```{r eval = FALSE}
+#| code-fold: show
+
+# If you don't have R.utils package, please install it first
+install.packages("R.utils") 
+
+# Load the functions
+R.utils::sourceDirectory("R/")
+```
+
+We haven’t released this as a formal R package yet; please source the R files directly. Sorry for the inconvenience caused.
+
+# How to use the package
+We designed a Rmarkdown demo with different scenario to illustrate how to use the functions in epi-simulation package. Just 3 simple steps to run the demo:
+
+1. Edit your inputs in the code chunk `EDIT YOUR INPUTS HERE` section.
+2. Load the package functions by running the code chunk `Load package functions`.
+3. Run each section to reproduce the figures and tables.
+ - Not familiar with coding? can directly edit the inputs in `User-Demo.Rmd` and run the code chunks. 
+ - Advanced users? Use the demo as a starting point for custom scripts and deeper analysis.
+
+## Demo Rmarkdown
+
+**Here is the demo snapshot, for full code please check the `User-Demo.Rmd` file in the [GitHub](https://github.com/idem-lab/epi-simulation.git).** 
+
+Hi, there!  
+This is a demo for all the user inputs you can edit to run the various models and simulations.
+Inside we drafted different sections for each scenario (A to H). 
+
+**Sections**
+: A) Deterministic (constant beta)
+: B) Deterministic (seasonal beta)
+: C) Stochastic (constant beta)
+: D) Stochastic (seasonal beta)
+: E) Multi-pop deterministic
+: F) Multi-pop stochastic
+: G) Dashboards with self arrangement
+: H) Summaries & helpers functions
+
+Explore the code chunks below and edit the inputs! Have fun :)
+
+For installation please check the `README.md` instructions.
+
+**Edit your inputs here**
+```{r eval=FALSE}
+#| code-fold: show
+# ---- EDIT YOUR INPUTS HERE -------------------
+# Common components
+n_times <- 60      # Total days to simulate
+pop     <- 100000  # Population size
+I_init  <- 10      # Initial number of infectious individuals
+beta    <- 0.75    # Transmission rate  
+gamma   <- 1/7     # Recovery rate
+omega   <- 1/30    # Rate of loss of immunity(R -> S)
+
+
+# Seasonal beta (for B, D)
+season_base  <- 0.70   # Base transmission rate
+season_amp   <- 0.25   # Amplitude of seasonal variation (0 ≤ amplitude < 1)
+season_phase <- 30     # Phase shift in days
+
+# Stochastic (C,D,F)
+n_sims   <- 200   # Number of independent simulation runs (columns).
+epsilon  <- 1e-4  # External infection pressure.
+alpha    <- 0.3   # Reporting rate
+seed     <- 42    # Random seed for reproducibility
+
+# Multi-pop (E, F)
+mp_n_times <- 180                     # Total days to simulate
+mp_pops    <- c(100000, 500, 200000)  # Population sizes
+mp_Iinit   <- c(100, 5, 1000)         # Initial infectious individuals
+mp_beta    <- 0.20                    # Transmission rate
+mp_gamma   <- 1/7                     # Recovery rate
+mp_omega   <- 1/30                    # Rate of loss of immunity(R -> S)
+
+# Multi-pop stochastic (F)
+mp_sims    <- 200      # Number of stochastic simulations
+mp_epsilon <- 0        # Noise parameter
+mp_alpha   <- NULL     # Scaling factor for stochasticity
+mp_seed    <- 99       # Random seed for reproducibility
+
+# Customise uncertainty ribbons(Default to 95%)
+ribbon_probs <- c(0.025, 0.975)
+
+# Customise colors for multiple populations
+my_pop_cols <- c("#E41A1C", "#377EB8", "#4DAF4A")
+```
+
+**Load package functions**
+```{r eval = FALSE}
+#| code-fold: show
+# Please ensure you have "R" file in your working directory
+R.utils::sourceDirectory("R/")
+```
+
+Next will be A to H sections.
+
+Please check the full code in the `User-Demo.RMD` file. 
+
+## Deterministic model
+Deterministic model assumes that the outcome is fully determined by the parameter values and the initial conditions. There is no randomness involved in the development of future states of the system.
+
+@tbl-parameters shows the basic input parameters, edit them in the `Edit your inputs here` section to see how the changes affect the simulation results.
+
+```{r echo=FALSE}
+#| label: tbl-parameters
+#| tbl-cap: "Deterministic Model Parameter Definitions"
+
+input1 <-  c("n_times", "pop", "I_init", "beta", "gamma",  "omega")
+desc1 <- c(
+  "Total days to simulate",
+  "Population size",
+  "Initial number of infectious individuals",
+  "Transmission rate",
+  "Recovery rate",
+  "Rate of loss of immunity (R → S)"
+)
+
+tbl_parameters <- tibble::tibble(
+  Parameter    = input1,
+  Description = desc1
+)
+
+kableExtra::kable(tbl_parameters)
+```
+
+After you run `simulate_sirs_det()` function, it will return a list containing:
+
+- **params:** A list of input parameters used in the simulation.
+
+- **results:** A data frame containing the simulation results with columns for time, susceptible (S), infectious (I), and recovered (R) proportions.
+
+```{r}
+#| code-fold: show
+# Deterministic simulation(single population)
+simA <- simulate_sirs_det(
+  n_times = n_times, pop = pop, I_init = I_init,
+  beta = beta, gamma = gamma, omega = omega)
+
+# Pick the infectious proportion over time
+simA$I
+```
+The returned list is very long so we designed a `to_tidy()` function to convert the simulation output to tidy format for easier plotting and analysis. For more details please check the `Helper functions` section.
+
+
+### Plotting
+In deterministic model, we can use `plot_sirs()` function to visualise the simulation results. The function provides different plot options including "overlay", "sir", "incidence", and "both_side" for users to choose the best visualisation to tell their story.
+
+**"sir" option shows the S, I, R compartments over time.**
+```{r}
+#| code-fold: show
+#| label: fig-det-sir
+#| fig-cap: "Deterministic SIRS plot - S, I, R compartments over time."
+
+# plot options: "overlay", "sir", "incidence", "both_side"
+det_sir <- plot_sirs(simA, which = "sir")
+plotly::ggplotly(det_sir)
+
+# If you want to save the figure, use ggsave() function
+# ggsave(a, filename = "image/fig-det-sir.png", width = 6, height = 4)
+```
+
+**"incidence" option shows the daily new infections over time.**
+```{r}
+#| code-fold: show
+#| label: fig-det-incidence
+#| fig-cap: "Deterministic SIRS plot - daily incidence over time."
+
+det_incidence <- plot_sirs(simA, which = "incidence", per_million = TRUE)
+plotly::ggplotly(det_incidence)
+```
+
+**"overlay" option shows the S, I, R compartments and daily incidence in one plot.**
+```{r}
+#| code-fold: show
+#| label: fig-det-overlay
+#| fig-cap: "Deterministic SIRS plot - overlay style."
+
+det_overlay <- plot_sirs(simA, which = "overlay")
+plotly::ggplotly(det_overlay)
+```
+
+**"both_side" option shows the S, I, R compartments on the left side and daily incidence on the right side.**
+```{r}
+#| code-fold: show
+#| label: fig-det-bothside
+#| fig-cap: "Deterministic SIRS plot - both side style."
+
+det_both <- plot_sirs(simA, which = "both_side")
+plotly::ggplotly(det_both)
+```
+
+:::{.callout-note}
+If you want to save the figures, you can use `ggsave()` function after plotting.
+:::
+
+## Stochastic model
+Stochastic model incorporates randomness and uncertainty into the simulation process. It recognizes that real-world epidemics are influenced by random events and variations, leading to different possible outcomes even with the same initial conditions and parameters.
+
+@tbl-stoch-parameters shows the additional input parameters for stochastic model, edit them in the `Edit your inputs here` section to see how the changes affect the simulation results.
+
+```{r echo=FALSE}
+#| label: tbl-stoch-parameters
+#| tbl-cap: "Stochastic Model Parameter Definitions"
+
+input2 <-  c("n_sims","epsilon", "alpha", "seed", "ribbon_probs")
+
+desc2 <- c("Number of independent simulation runs",
+           "External infection pressure",
+           "Reporting rate",
+           "Random seed for reproducibility",
+           "Customise uncertainty ribbons(Default to 95%)"
+)
+
+tbl_stoch_parameters <- tibble::tibble(
+  Parameter    = input2,
+  Description = desc2
+)
+kableExtra::kable(tbl_stoch_parameters)
+```
+
+The `n_sims` parameter specifies the number of independent simulation runs to be performed. Each simulation run represents a separate realization of the stochastic process, allowing for the exploration of variability and uncertainty in the epidemic dynamics. By running multiple simulations, users can obtain a distribution of possible outcomes, which can be used to assess the range of potential epidemic trajectories and to quantify uncertainty in key metrics such as peak incidence, total infections, and duration of the outbreak. 
+
+If you simulate 10 days with `n_sims = 5`, the output (e.g., cases) is a 10 × 5 matrix: rows = days (1–10) and columns = simulation runs (1–5). Each cell is the value for that day in that run. From this matrix you can compute daily quantiles for uncertainty ribbons, plus means/medians and other summaries.
+
+```{r}
+example1 <- simulate_sirs_stoch(
+  n_times = 10, pop = 1000, I_init = 5,
+  beta = 0.2, gamma = 1/30, omega = 1/14,
+  epsilon = 0, alpha = 0.1,
+  n_sims = 5, seed = seed
+)
+example1$params$ribbon_probs <- ribbon_probs
+
+# Filter the infectious proportions
+example1$proportions[ , , "I"]
+```
+
+The **epsilon($\epsilon$)** parameter represents the external infection pressure, which accounts for the influence of infections originating from outside the modeled population. This parameter is crucial for capturing the dynamics of disease spread in scenarios where there is a risk of new infections being introduced from external sources, such as travelers or neighboring communities. Usually the range of $\epsilon$ is within 0 to 1 and it should be relatively small compared to the transmission rate $\beta$. (which means $\epsilon << \beta$).
+
+The **alpha($\alpha$)** parameter is the reporting rate, which reflects the proportion of actual infections that are detected and reported in the simulation. This parameter is important for modeling the observed data accurately, as not all infections may be captured due to underreporting, asymptomatic cases, or limitations in testing capacity. The value of $\alpha$ typically ranges from 0 to 1, where 0 indicates no reporting (all infections go undetected) and 1 indicates perfect reporting (all infections are detected and reported).
+
+For **reproducibility**, setting a random seed using the `seed` parameter ensures that the stochastic simulations can be replicated exactly. By initializing the random number generator with a specific seed value, users can obtain consistent results across multiple runs of the simulation, which is essential for debugging, validation, and comparison of different scenarios.
+
+**Uncertainty ribbons** are visual representations of the variability in the simulation outcomes. The `ribbon_probs` parameter allows users to customize the quantiles used to create these ribbons, providing insights into the range of possible epidemic trajectories. By default, the ribbons are set to represent a 95% confidence interval (2.5th to 97.5th percentiles), showing where the majority of simulation results fall. However, users can adjust these values to explore different levels of uncertainty in the results.
+
+After you run `simulate_sirs_stoch()` function, it will return a list containing:
+
+- **params:** A list of input parameters used in the simulation.
+
+- **results:** A data frame containing the simulation results with columns for time, simulation number (sim), susceptible (S), infectious (I), and recovered (R) proportions.
+
+```{r}
+stoch_D <- simulate_sirs_stoch(
+  n_times = 80, pop = 1000, I_init = 5,
+  beta = 0.2, gamma = 1/30, omega = 1/14,
+  epsilon = 0, alpha = 0.1,
+  n_sims = n_sims, seed = seed
+)
+stoch_D$params$ribbon_probs <- ribbon_probs
+
+d <- to_tidy(stoch_D) %>% 
+  filter(sim == 1)  #  results from the first simulation only
+```
+
+```{r echo=FALSE}
+#| label: tbl-stoch-results
+#| tbl-cap: "Stochastic Model Simulation Results (First Simulation Round)"
+datatable(
+  d,
+  rownames = FALSE,
+  filter = "none",
+  options = list(
+    pageLength = 10,
+    lengthMenu = c(10, 25, 50, 100)
+  ),
+  class = "compact stripe hover",
+) 
+```
+
+@tbl-stoch-results we used `to_tidy()` function to convert the simulation output to tidy format for easier plotting and analysis. We suggest using `DT::datatable()` function to create an interactive table to display the simulation results.
+
+### Plotting
+For visualising the stochastic simulation results, we can use `plot_stoch()` function. This function plots options are similar to `plot_sirs()` function but with uncertainty ribbons to represent the variability across multiple simulation runs.
+
+User can choose "overlay", "SIR", "incidence", and "both" with customisable uncertainty ribbons.
+```{r}
+#| code-fold: show
+#| label: fig-stochsir
+#| fig-cap: "Stochastic SIRS plot - S, I, R compartments with uncertainty ribbons."
+
+# plot options: "SIR", "incidence", "overlay", "both"
+stoch_sir <- plot_stoch(stoch_D, which = "SIR")
+plotly::ggplotly(stoch_sir)
+```
+@fig-stochsir shows the S, I, R compartments over time with uncertainty ribbons.
+
+## Multi-population model
+Multi-population model simulates the disease dynamics across multiple distinct populations or groups. Each population may have its own characteristics, such as population size, transmission rates, and recovery rates. The model allows for interactions between these populations, capturing the spread of the disease across different communities or regions.
+
+```{r echo=FALSE}
+#| label: tbl-multi-parameters
+#| tbl-cap: "Multi-population Model Parameter Definitions"
+
+mds <- c("Deterministic"," "," "," "," "," ",
+         "Stochastic"," "," "," ","Colors","Probability interval")
+
+input3 <-  c("mp_n_times", "mp_pops", "mp_Iinit", "mp_beta", "mp_gamma",  "mp_omega", "mp_sims", "mp_epsilon", "mp_alpha", "mp_seed", "my_pop_cols","ribbon_probs")
+desc3 <- c(
+  "Total days to simulate",
+  "Population sizes",
+  "Initial infectious individuals",
+  "Transmission rate",
+  "Recovery rate",
+  "Rate of loss of immunity (R -> S)",
+  "Number of independent simulation runs",
+  "External infection pressure",
+  "Reporting rate",
+  "Random seed for reproducibility",
+  "Self-defined colors for multiple populations",
+  "Customise uncertainty ribbons(Default to 95%)"
+)
+
+tbl_multi_parameters <- tibble::tibble(
+  Model       = mds,
+  Parameter    = input3,
+  Description = desc3
+)
+
+kableExtra::kable(tbl_multi_parameters)
+```
+
+@tbl-multi-parameters shows the input parameters for multi-population model, you can  edit them in the `Edit your inputs here` section to see how the changes affect the simulation results. 
+
+The parameters for multi-population model are similar to single population model. The only three inputs different are:
+
+- `mp_n_times`, `mp_pops`:the population sizes and initial infectious, will be one value per group.
+
+For example, if you have 3 populations with sizes 100,000, 500, and 200,000, you would set `mp_pops = c(100000, 500, 200000)`. Similarly, if the initial infectious individuals are 100, 5, and 1000 for these populations respectively, you would set `mp_Iinit = c(100, 5, 1000)`.
+
+- `my_pop_cols`: You can define a vector of colors to represent each population in the plots.
+
+For example, `my_pop_cols = c("#E41A1C", "#377EB8", "#4DAF4A")` assigns specific colors to three populations.
+
+The output of `simulate_sirs_multi()` and `simulate_sirs_multi_stoch()` functions are similar to single population model but with an additional dimension for populations. The results will include the simulation outputs for each population separately, allowing for comparison of disease dynamics across different groups.
+
+### Plotting
+`plot_multi()` function are used to visualise the multi-population simulation results. This function provide options to plot the S, I, R compartments and daily incidence for each population, either in a combined style or faceted style.
+
+- `group_style = "combined"`: This option overlays the results from all populations in a single plot, using different colors to distinguish between populations.
+
+- `group_style = "facet"`: This option creates separate subplots for each population, better visualisation for stochastic simulations with uncertainty ribbons.
+
+- `per_million = TRUE/FALSE`: This option allows users to choose whether to display the incidence per million individuals or as absolute numbers.
+
+- `show_bands = TRUE/FALSE`: This option allows users to choose whether to display uncertainty ribbons in the plots.
+
+The following will use the multi-population stochastic simulation as an example.
+```{r}
+sim_F <- simulate_sirs_multi_stoch(
+  n_times    = mp_n_times,
+  pop_vec    = mp_pops,
+  I_init     = mp_Iinit,
+  beta_mat   = mp_beta,     
+  gamma      = mp_gamma,
+  omega      = mp_omega,
+  epsilon    = mp_epsilon,
+  alpha      = mp_alpha,
+  n_sims     = mp_sims,
+  seed       = mp_seed
+)
+sim_F$params$ribbon_probs <- ribbon_probs
+```
+
+```{r warning=FALSE}
+#| code-fold: show
+#| label: fig-multi-combined
+#| fig-cap: "Multi-population stochastic plot - combined style."
+
+pF1 <- plot_multi(sim_F,                     # Change to your multi-population simulation object
+                  which = "I",               # plot options: "S", "I", "R", "incidence"
+                  group_style = "combined",  # groups_style: "combined", "facet"
+                  show_bands = FALSE,        # show uncertainty ribbons or not
+                  per_million = TRUE)        # show per million or not(for incidence)
+plotly::ggplotly(pF1)
+```
+
+@fig-multi-combined shows the combined style plot for multi-population stochastic simulation.
+
+```{r}
+#| code-fold: show
+#| label: fig-multi-facet
+#| fig-cap: "Multi-population stochastic plot - facet style."
+
+# plot options: "S", "I", "R", "incidence"
+# groups_style: "combined", "facet"
+pF2 <- plot_multi(sim_F, which = "I", group_style = "facet")
+plotly::ggplotly(pF2)
+```
+
+@fig-multi-facet shows the facet style plot for multi-population stochastic simulation.
+The uncertainty ribbons for population 2 is huge because the population size and intial infectious are very small (500 and 5 respectively) in this example. We suggest users to avoid simulating very small populations to get more realistic results.
+
+## Dashboard function with self arrangement(Still in development)
+This function allows users to create a comprehensive dashboard that combines multiple plots into a single view. It provides an overview of the epidemic dynamics across different populations and compartments, facilitating easy comparison and analysis.
+
+`plot_dashboard()` is still under development, current draft version support plot options including "SIR", "S", "I", "R", "incidence", "beta", and "params". 
+
+**"params"** panel will also show at console the simulation parameters used in the model. User can quickly check if the inputs are correct and copy them for record purpose or reproduction.
+
+Here is the example:
+
+``` r
+── Simulation parameters ──
+
+• n_times: 365
+• P: 1
+• pop_vec: 1
+• I_init: 10
+• beta: [vector]
+• gamma: 0.1429
+• 1/gamma (days): 7.00
+• omega: 0.03333
+• 1/omega (days): 30.00
+• epsilon: —
+• alpha: —
+• n_sims: 1
+• stochastic: FALSE
+```
+<sup>Created on 2025-11-02 with [reprex v2.1.1](https://reprex.tidyverse.org)</sup>
+
+`arrange_dashboard()` function allows users to arrange the selected plots into a specified layout, such as a grid or custom arrangement. This function provides flexibility in organizing the visualizations to suit the user's preferences and analysis needs.
+
+Inside the `arrange_dashboard()` function,
+
+- `layout` allows users to specify the desired arrangement of the plots, such as the number of rows and columns in a grid layout. For example, `layout = c(2, 3)` would arrange the plots in a 2x3 grid.
+
+- `collect_legend` is a logical parameter that determines whether to collect and display a single legend for all plots in the dashboard. If set to `TRUE`, the function will combine the legends from individual plots into one, which can help reduce clutter and improve the overall appearance of the dashboard. If set to `FALSE`, each plot will retain its own legend.
+
+```{r echo=FALSE}
+beta_B <- make_beta(
+  n_times=365, mode = "seasonal",
+  base = season_base, amplitude = season_amp, phase = season_phase
+)
+simB <- simulate_sirs_det(
+  n_times = 365, pop = pop, I_init = I_init,
+  beta = beta_B, gamma = gamma, omega = omega
+)
+```
+
+```{r eval=FALSE}
+plots_single <- plot_dashboard(
+  sim           = simB,          # Change to your simulation object
+  probs         = ribbon_probs,  # 
+  per_million   = FALSE,
+  group_style   = "facet",
+  show_bands    = FALSE                   
+)
+panels_single <- c("SIR","incidence","beta","params")
+p_single <- arrange_dashboard(plots_single[panels_single], layout = c(2,2), collect_legend = TRUE)
+print(p_single)
+
+```
+
+```{r echo=FALSE}
+#| label: fig-db1
+#| fig-cap: "Deterministic dashboard 2x2 arrangement."
+knitr::include_graphics("image/db1.png")
+
+```
+
+@fig-db1 shows the deterministic dashboard 2x2 arrangement with basic SIR curve, Daily incidence, beta and parameters panel.
+
+```{r eval=FALSE}
+plots_F <- plot_dashboard(
+  sim           = sim_F,
+  probs         = c(0.95),
+  per_million   = TRUE,
+  group_style   = "facet",
+  pop_cols      = my_pop_cols,
+  show_bands    = TRUE,
+  
+)
+panels_F <- c("S","I","R","incidence","beta","params")
+p_F <- arrange_dashboard(plots_F[panels_F], layout = c(2,3), collect_legend = TRUE)
+```
+
+```{r echo=FALSE}
+#| label: fig-db2
+#| fig-cap: "Multi-population stochastic dashboard 2x3 arrangement."
+knitr::include_graphics("image/db2.png")
+```
+
+@fig-db2 shows the multi-population stochastic dashboard 2x3 arrangement with S, I, R compartments, Daily incidence, beta and parameters panel. Beta panel show a straight line because we used constant beta in this example.
+
+```{r eval=FALSE}
+plots_FF <- plot_dashboard(
+  sim           = sim_F,
+  probs         = c(0.95),
+  per_million   = TRUE,
+  group_style   = "combined",
+  pop_cols      = my_pop_cols,
+  show_bands    = FALSE
+)
+```
+
+```{r eval=FALSE}
+#| code-fold: show
+panels_FF <- c("S","I","R","incidence")
+p_FF <- arrange_dashboard(plots_FF[panels_FF], layout = c(2,2), collect_legend = FALSE)
+```
+
+```{r echo=FALSE}
+#| label: fig-db3
+#| fig-cap: "Multi-population stochastic dashboard 2x2 arrangement (combined style)."
+knitr::include_graphics("image/db3.png")
+```
+
+@fig-db3 shows the multi-population stochastic dashboard 2x2 arrangement with S, I, R compartments and Daily incidence panel in combined style. We turned off the uncertainty ribbons`show_bands= FALSE`, so this only shows the mean trend across all simulation runs. We set `collect_legend = FALSE`, you can see each plot has its own legend which is different to @fig-db1 and @fig-db2.
+
+To sum up, you can explore by changing the `layout`, `group_style`, `show_bands`, and `collect_legend` parameters to create customised dashboards that best suits your analysis needs. The flexibility in layout and legend collection allows for customization based on the specific requirements of your study.
+
+## Summaries & helper functions
+### Summary functions
+After running the simulation functions, we can use `summarize_sim()` to generate summary statistics from the simulation results. This function provides user have a quick, readable snapshot—especially of the peak infection. 
+
+```{r echo=FALSE}
+#| label: tbl-summary-columns
+#| tbl-cap: "Summary Table Columns"
+column <- c(
+  "sim","pop","peak_I","peak_I_day","peak_incidence","peak_incidence_day","final_R"
+)
+
+desc <- c(
+  "Simulation Rounds",
+  "Populations",
+  "Peak infected proportion",
+  "Peak infected Day",
+  "Peak incidence(Count)",
+  "Peak incidence Day",
+  "Final Recovered proportion"
+)
+
+summary_tbl <- tibble::tibble(
+  Column    = column,
+  Description = desc
+)
+kableExtra::kable(summary_tbl)
+```
+
+```{r echo=FALSE}
+simF <- simulate_sirs_multi_stoch(
+  n_times    = mp_n_times,
+  pop_vec    = mp_pops,
+  I_init     = mp_Iinit,
+  beta_mat   = mp_beta,     
+  gamma      = mp_gamma,
+  omega      = mp_omega,
+  epsilon    = mp_epsilon,
+  alpha      = mp_alpha,
+  n_sims     = mp_sims,
+  seed       = mp_seed
+)
+simF$params$ribbon_probs <- ribbon_probs
+```
+
+If user want to run a large amount simulation rounds with many population sizes, the ouput table will be large. So inside the `User-Demo.Rmd` make it more user friendly, we use `DT`package. By using the datatable you can search and filter interactively.
+
+For example in @tbl-summary-stats, we show the summary statistics from multi-population stochastic simulation. There is 3 populations and run 200 independent simulation rounds, which will return out 600 entries.
+```{r echo=FALSE}
+#| label: tbl-summary-stats
+#| tbl-cap: "Summary Statistics from Multi-population Stochastic Simulation"
+
+# Change different data frames here to see different summaries
+sumF <- summarize_sim(simF, level = "per_pop")
+
+datatable(
+  sumF,
+  rownames = FALSE,
+  filter = "none",
+  options = list(
+    pageLength = 10,
+    lengthMenu = c(10, 25, 50, 100)
+  ),
+  class = "compact stripe hover",
+) 
+```
+
+### Helper functions
+#### `to_tidy()`: Convert simulation output to tidy format for easier plotting and analysis.
+After you run the simulation function, they will return a long list so we can use `to_tidy()` to convert it to a tidy data frame table for further analysis:
+
+- **Time:** simulation date.
+- **Group:** populations size.
+- **Sim:** independent simulation runs.
+- **State:** S, I, R compartments.
+- **Value:** the number of individuals in each compartment at each time point for each simulation run.
+
+```{r}
+#| code-fold: show
+#| label: tbl-tidy-example
+#| tbl-cap: "Tidy Data Frame from Multi-population Stochastic Simulation Output"
+
+# Example of Multi-population stochastic model
+tt <- to_tidy(simA)   # Change the data frame here
+
+# Filter for specific group and state
+tt <- to_tidy(simF)|> 
+  dplyr::filter(group == 1, state == "I")
+
+# The table is large; show first 10 rows
+head(tt,10)
+```
+
+@tbl-tidy-example shows an example of tidy data frame from multi-population stochastic simulation output, filtered for group 1, state "I" and first 10 rows only.
+
+#### `make_beta()`: Create time-varying transmission rate(beta) with seasonal pattern.
+This function generates a vector of transmission rates($\beta$) that vary over time according to a seasonal pattern. Users can specify the base transmission rate, amplitude of seasonal variation, and phase shift to model seasonal effects on disease transmission.
+```{r echo=FALSE}
+#| label: tbl-make-beta-parameters
+#| tbl-cap: "make_beta() Function Parameter Definitions"
+
+input4 <-  c("n_times", "mode", "base", "amplitude", "phase")
+
+desc4 <- c(
+  "Total time points to generate beta values for",
+  "Type of beta pattern: 'constant' or 'seasonal'",
+  "Base transmission rate",
+  "Amplitude of seasonal variation (0 ≤ amplitude < 1)",
+  "Phase shift in days"
+)
+
+tbl_make_beta_parameters <- tibble::tibble(
+  Parameter    = input4,
+  Description = desc4
+)
+
+kableExtra::kable(tbl_make_beta_parameters)
+```
+
+```{r}
+#| code-fold: show
+beta_seasonal <- make_beta(
+  n_times = 365,        # Total days
+  mode = "seasonal",    # Options: "constant", "seasonal"
+  base = 0.7,           # Base transmission rate
+  amplitude = 0.25,     # Amplitude of seasonal variation
+  phase = 30            # Phase shift in days
+)
+
+```
+
+```{r echo=FALSE}
+#| label: fig-beta-seasonal
+#| fig-cap: "Seasonal Beta over Time"
+
+b <- ggplot(data = data.frame(day = 1:365, beta = beta_seasonal), aes(x = day, y = beta)) +
+  geom_line(color = "blue") +
+  labs(title = "Seasonal Beta over Time", x = "Day", y = "Beta") +
+  theme_minimal()
+
+ggplotly(b)
+```
+
+@fig-beta-seasonal shows an example of seasonal beta over time with a base transmission rate of 0.7, amplitude of 0.25, and phase shift of 30 days.
+
+#### `adjust_beta()`: Adjust transmission rate(beta) by a scaling factor.
+This function allows users to modify the transmission rate(beta) within specified day windows by applying scaling factors. This is useful for simulating interventions or changes in transmission dynamics over time.
+```{r}
+#| code-fold: show
+B <- adjust_beta(rep(0.2, 365),                 # Initial beta vector
+                 data.frame(start=50, end=80),  # Day windows to adjust
+                 0.7  )                           # Scaling factor
+```
+
+```{r echo=FALSE}
+#| fig-cap: "Adjusted Beta over Time"
+#| label: fig-adjusted-beta
+
+a <- ggplot(data = data.frame(day = 1:365, beta = B), aes(x = day, y = beta)) +
+  geom_line(color = "red") +
+  labs(title = "Beta over Time", x = "Day", y = "Beta") +
+  theme_minimal()
+
+ggplotly(a)
+```
+
+@fig-adjusted-beta This is an example of adjusted beta over time starting from day 50 to day 80 with a scaling factor of 0.7. The initaial beta is 0.2, after scaling the beta becomes 0.14(0.2 * 0.7) during the specified period.
+
+#### `cumulative_incidence()`: Calculate cumulative incidence from simulation output.
+This function computes the cumulative number of new infections over time based on the simulation results. It helps to understand the overall impact of the epidemic in terms of total cases.
+
+```{r}
+#| code-fold: show
+ci_F <- cumulative_incidence(simF)
+
+# Filter for specific group
+ci_F <- ci_F |>
+  dplyr::filter(sim == 2)
+
+```
+
+```{r echo=FALSE}
+#| label: tbl-cumulative-incidence
+#| tbl-cap: "Cumulative Incidence from Simulation Output"
+datatable(
+  ci_F,
+  rownames = FALSE,
+  filter = "none",
+  options = list(
+    pageLength = 10,
+    lengthMenu = c(10, 25, 50, 100)
+  ),
+  class = "compact stripe hover"
+) 
+```
+
+
+#### `sanity_check()`: Verify S + I + R ≈ 1 at each time step.
+This function checks that the sum of the proportions in the S, I, and R compartments is approximately equal to 1 at each time step, ensuring the integrity of the simulation results.
+
+```{r}
+#| code-fold: show
+
+sanity_check(simA)
+
+```
+
+:::{.callout-note}
+Already considered inside the core simulation functions, we would like to drop this function in the future version.
+:::
+
+# Limitations
+
+- **Model scope.** The project currently implements **SIRS only**; models with a latent stage (e.g., **SEIR/SEIRS**) are not included.
+- **No data fitting.** We do not provide parameter estimation or calibration to real data. Examples use **simulated scenarios**, so results are illustrative rather than empirical. Users may adapt the code to fit their own datasets.
+- **Dashboard status.** The dashboard is **exploratory** and under active development; some features are incomplete.
+- **Project maturity.** This is **source-first research code** still in development and not yet released as a formal R package (e.g., not on CRAN). Installation is via the repo source.
+
+
+# Future developments
+Since we still are developing this package, there are several planned improvements for future versions.
+
+Planned improvements include:
+
+- For all the plotting function, for "SIR', "S', "I" and "R" are showing the proportion, we would like to add an option is showing the real number of individuals in each compartment.
+
+- Dashboard function is still under development, we would like to add more plot options. For example add `plot_det_vs_stoch()` function to the dashboard so user can compare the deterministic and stochastic results in one panel.
+
+- Added plotting function for `summarize_sim()` output, so user can visualise the summary statistics better. For example, plot the distribution of peak infection across multiple simulation rounds.
+
+- Consider combine `make_beta()` and `adjust_beta()` functions into one function with more flexible options.
+
+- `sanity_check()` function already considered inside the core simulation functions, we would like to drop this function in the future version.
+
+- Package release. Finalise all the improvements, adding descriptions, unit tests, and vignettes to prepare for formal release package.
+
+# Conclusion
+This report presents a lightweight, ready-to-use SIRS toolkit that turns core epidemiological assumptions into clear, like-for-like outputs for rapid scenario exploration. By standardising inputs and outputs across deterministic and stochastic engines, supporting time-varying transmission ($\beta_t$) (seasonality and intervention windows), and returning tidy tables with uncertainty-aware visuals (quantile ribbons, headline summaries), the package makes it straightforward to compare scenarios and communicate results responsibly. The workflow remains accessible to non-coders via an R Markdown demo while staying fully scriptable for analysts; the dashboard provides quick exploratory views without claiming to be a finished decision tool.
+
+Findings from simulated scenarios illustrate expected patterns—seasonal $\beta_t$ produces recurrent waves; simple interventions that reduce $\beta_t$ lower and delay peaks; faster waning ($\omega$) shortens inter-wave intervals—and show how uncertainty narrows with stronger control or larger populations. At the same time, the scope is intentionally lean: SIRS only (no SEIR/SEIRS), no data fitting or parameter uncertainty, homogeneous mixing, and an exploratory dashboard. Planned enhancements—counts as a plotting option, richer dashboard panels (including det-vs-stoch overlays), summary visualisations, a unified $\beta_t$ utility, and package hardening—will further improve usability and comparability. Overall, the toolkit offers a simple, fast, and defensible baseline for outbreak scenario analysis, well suited to teaching, rapid “what-if” work, and transparent communication when time matters.
+
+# Acknowledgements
+This report is utilized the  [tidyverse](https://cran.r-project.org/web/packages/tidyverse/index.html)(@tidyverse), [DT](https://cran.r-project.org/web/packages/DT/index.html)(@DT), [kableExtra](https://cran.r-project.org/web/packages/kableExtra/index.html)(@kableExtra), [plotly](https://cran.r-project.org/web/packages/plotly/index.html)(@plotly), [R.utils](https://cran.r-project.org/web/packages/R.utils/index.html)(@utils) for creating the visual included in this report. The developing version are  available on [GitHub](https://github.com/idem-lab/epi-simulation.git). I also acknowledge the use of [ChatGPT](https://chat.openai.com/) to improve the text, grammar, and spelling.
+
+# Appendix
+## Contribution Statement
+```{r echo=FALSE}
+contributors <- c("Christy"," "," "," "," "," "," "," "," "," ",
+                 "Varun", " ", " "," "," "," "," ")
+
+fn <- c(
+  "`simulate_sirs_det()`",
+  "`simulate_sirs_stoch()`",
+  "`simulate_sirs_multi()`",
+  "`simulate_sirs_multi_stoch()`",
+  "`plot_sirs()`",
+  "`plot_stoch()`",
+  "`plot_multi()`",
+  "`plot_dashboard()` + `arrange_dashboard()`",
+  "`summarize_sim()`",
+  "`make_beta()`",
+  "`plot_det_vs_stoch()`",
+  "`adjust_beta()`",
+  "`to_tidy()`",
+  "`cumulative_incidence()`",
+  "`sanity_check()`",
+  "`attack_rate()`",
+  "`reff_from_sim()`"
+)
+
+desc <- c(
+  "Deterministic single population.",
+  "Stochastic single population (many rounds).",
+  "Deterministic multi-population.",
+  "Stochastic multi-population.",
+  "Single-pop SIR/overlay/incidence views.",
+  "Single-pop Stochastic ribbons/lines & incidence.",
+  "Multi-pop S/I/R/incidence (combined or faceted).",
+  "Build a multi-panel dashboard.",
+  "Compare deterministic vs stochastic outputs.",
+  "Headline outbreak metrics (peaks, final sizes, etc.).",
+  "Create time-varying beta (constant, seasonal).",
+  "Scale beta within specified day windows.",
+  "Coerce outputs to a tidy long table (time, group, sim, state, value).",
+  "Cumulative incidence over time.",
+  "Verify S + I + R ≈ 1 at each time step",
+  "Cumulative attack rate over the simulation horizon",
+  "Calculate effective reproduction number over time."
+)
+
+contribution_tbl <- tibble::tibble(
+  Contributors    = contributors,
+  Functions    = fn,
+  Description = desc
+)
+kableExtra::kable(contribution_tbl)
+```
+
+
+# References
