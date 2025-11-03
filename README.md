@@ -50,8 +50,8 @@ First, download the package source code from GitHub.<br>
 
 ```{r}
 git clone https://github.com/idem-lab/epi-simulation.git
+cd epi-simulation
 ```
-
 Then Open the `epi-simulation.Rproj` file to load the project in RStudio.<br>
 
 Next, load the functions in R:
@@ -60,6 +60,7 @@ Next, load the functions in R:
 # Load the functions
 R.utils::sourceDirectory("R/")
 ```
+We haven’t released this as a formal R package yet; please source the R files directly. Sorry for the inconvenience caused.
 
 # What's inside?
 
@@ -80,7 +81,7 @@ R.utils::sourceDirectory("R/")
 |  | `to_tidy()` | Coerce outputs to a tidy long table (time, group, sim, state, value). |
 |  | `cumulative_incidence()` | Cumulative incidence over time. |
 |  | `sanity_check()` | Verify S + I + R ≈ 1 at each time step. |
-|  | `attack_rate()` | Cumulative AR using flows (prefers cases, else incidence); scalar/vector for single-pop; [sims × groups] matrix for multi-pop stochastic; falls back to final R proportion only if flows absent. |
+|  | `attack_rate()` |Cumulative attack rate over the simulation horizon. |
 |  | `check_contact()` | Quick diagnostics for contact matrices. |
 |  | `reff_from_sim()` | Effective reproduction metric from simulated paths. |
 
@@ -107,8 +108,11 @@ sim_1$I
 ![](images/op1.png)
 
 ```{r}
-# plot options: "sir", "overlay", "incidence", "both"
-plot_sir_diag(sim_1, which = "sir")
+# plot options: "overlay", "sir", "incidence", "both_side"
+plotA <- plot_sirs(sim_1, which = "sir")
+
+# If you want to save the plot, please use ggsave()
+# ggsave(plotA, filename = "deterministic_constant_beta.png", width = 8, height = 5)
 ```
 
 ![](images/op2.png)
@@ -154,23 +158,14 @@ to_tidy(stoch_D)
 
 For more other examples, please check the `User-Demo.Rmd` file in the repository.
 
-Reproducibility:
+# Reproducing the Figures
+We ensure reproducibility by setting seeds and providing a one-step rebuild:<br>
+- running `scripts/make_plots.R` will run all scenarios,<br>
+- source the code in `R/`, <br>
+- and regenerate every figure (`det_sir.png`, `det_incidence.png`,etc.) into the `plots/` folder.
 
-- Fixed seeds: single-pop `seed = 42`; multi-pop examples `mp_seed = 99`.
 
-- One-command rebuild: run `scripts/make_plots.R` to regenerate all figures into `plots/`:
-
-    - `det_sir.png`, `det_incidence.png`, `seasonal_sir.png`,
-
-    - `stoch_sir.png`, `stoch_incidence.png`,
-
-    - `multi_S_combined.png`, `multi_I_facet.png`, `multi_incidence_combined.png`.
-
-Scripts
-
-`scripts/make_plots.R` — sources `R/`, runs deterministic/seasonal/stochastic/multi-pop scenarios, writes the PNGs listed above.
-
-## Note
+## Notes
 
 * Active development in progress—README plots will render correctly in the packaged version.
 
