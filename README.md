@@ -115,7 +115,7 @@ plotA <- plot_sirs(sim_1, which = "sir")
 # ggsave(plotA, filename = "deterministic_constant_beta.png", width = 8, height = 5)
 ```
 
-![](images/op2.png)
+![](images/op2w.png)
 
 Stochastic single-population SIRS simulation with multiple runs:
 
