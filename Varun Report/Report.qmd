@@ -1,0 +1,381 @@
+---
+title: "Epidemiology by Design: A Reproducible SIRS Modeling Workflow"
+author:
+- name: Varun Sridhar
+  degrees: Master of Business Analytics
+  email: vsri0012@student.monash.edu
+phone: (03) 9905 2478
+email: BusEco-Econometrics@monash.edu
+organization: Kids Research Institute Australia
+bibliography: references.bib
+toc: true
+format: report-pdf
+resources:
+  - "plots/*"
+nocite: |
+  @kermack1927, @hethcote2000, @andersonmay1991, @keelingrohani2008,
+  @diekmann2010, @cori2013, @grasslyfraser2006, @Rcore2023, @wickham2016ggplot2
+---
+
+```{r}
+knitr::opts_chunk$set(
+eval    = FALSE,
+message = FALSE,
+warning = FALSE
+)
+```
+
+```{r}
+suppressPackageStartupMessages({
+if (requireNamespace("rprojroot", quietly = TRUE)) {
+knitr::opts_knit$set(
+root.dir = rprojroot::find_root(rprojroot::has_file("epi-simulation.Rproj"))
+)
+} else if (requireNamespace("here", quietly = TRUE)) {
+knitr::opts_knit$set(root.dir = here::here())
+} else {
+knitr::opts_knit$set(root.dir = getwd())
+}
+})
+```
+
+# Abstract
+
+This report presents a reproducible workflow for epidemiological simulation using a Susceptible-Infectious-Recovered-Susceptible (SIRS) model. I implemented core modeling code and utilities, including a stochastic single-population simulator and helpers for tidy outputs, cumulative metrics, beta-schedule adjustment, and basic multi-population checks. Using these tools, I ran deterministic (constant and seasonal) and stochastic scenarios. Methods are transparent: short parameter blocks generate simulations, and a single script writes publication-ready figures (S/I/R trajectories, derived daily incidence, uncertainty ribbons, and multi-population comparisons per million) to the plots/ folder. Results highlight peak timing and size under constant beta, the effect of seasonal forcing on amplitude and timing, variability across 200 stochastic runs, and cross-group differences when scaled per million. Complete code listings are provided in the Appendices, with fixed seeds and repository links to ensure exact reproduction. My individual contribution focuses on the modeling logic and figure pipeline; teammate materials (for example, the user demo and README) are acknowledged where relevant. The workflow supports fast what-if exploration, consistent visuals, and clear communication for decision-ready epidemiology.
+
+# Introduction
+
+In this report I build a small, reproducible workflow for simulating infectious disease dynamics using a Susceptible–Infectious–Recovered–Susceptible (SIRS) model. The goal is to show clear, decision-ready outputs while keeping the code minimal and fully repeatable. I implement single-population simulations in both deterministic and stochastic forms, and extend to a simple multi-population setting. The figures used in the Results section are generated from a single script and saved to the plots/ folder, so that anyone can rebuild the same outputs from source. As part of my internship, I was tasked with building a reproducible SIRS simulation pipeline and producing decision-ready figures that others can regenerate from source.
+
+Why SIRS? It captures reinfection through waning immunity and is a useful starting point for seasonal illnesses and endemic settings. The internship work focused on: (i) getting a reliable simulation core, (ii) making figures that communicate peak timing, magnitude, and uncertainty, and (iii) packaging short code snippets alongside figures so readers can reproduce exactly what they see.
+
+The rest of the report is structured as follows. Section 2 describes the model and how simulations and figures are produced. Section 3 presents results for deterministic (constant and seasonal) and stochastic scenarios, plus multi-population views. Section 4 discusses implications for epidemiology and planning. Section 5 lists limitations and future extensions. Section 6 summarises implementation details. Section 7 concludes.
+
+Repository & reproducibility. All code, data pointers, and build scripts are in <https://github.com/idem-lab/epi-simulation>. The repository includes a one-click script to regenerate every figure and the Quarto/LaTeX project files used to compile this report. For quickstart steps see `README.md` in the repository, and for a brief walk-through use the interactive user demo linked there.
+
+## Objectives
+
+-   Build a small, fully reproducible SIRS workflow.
+
+-   Communicate peak timing, size, and uncertainty with standardised figures.
+
+-   Provide a minimal code path others can run and extend.
+
+## Significance
+
+This report’s contribution is a compact, one-script figure pipeline with fixed seeds and tidy helpers that make uncertainty standard, not optional. It shows how to get decision-ready visuals from simple models with minimal code.
+
+# Methods
+
+**Data note**: “No external datasets are used; all results come from simulated scenarios. Data limitations therefore concern model structure rather than data quality.”
+
+## Model structure
+
+The SIRS model divides the population into three states: S (susceptible), I (infectious), and R (recovered/immune). Individuals in R lose immunity at rate omega and return to S. The population is assumed closed (no births, deaths, or migration) with mass-action mixing. Transmission is governed by a contact rate beta(t), recovery by gamma, and waning by omega. Daily incidence is defined as the number of new infections moving from S to I on each day. Seasonality is represented by allowing beta(t) to vary over time (for example, sinusoidal forcing). In this report, “incidence” means new infections per day. For multi-population comparisons, incidence is also shown per million to standardise scales.
+
+## Deterministic simulations
+
+Deterministic simulations use expected flows at each time step to update S, I, and R. Baseline scenarios use a constant beta, while seasonal scenarios replace beta with beta(t). Outputs are S, I, R proportions and a derived daily incidence series.
+
+## Stochastic simulations
+
+Stochastic simulations use binomial draws for each transition (infection, recovery, waning) to capture variability. Many independent runs are generated and summarised by a center line (median) with uncertainty ribbons (for example, 95%). The reporting process can optionally thin cases via a reporting probability alpha.
+
+## Multi-population setup
+
+The multi-population deterministic model runs the same SIRS dynamics for each group with specified population sizes, initial infections, and a beta matrix (constant in this report). This enables comparison across groups using common scales (for example, incidence per million).
+
+## Parameterization and default settings
+
+We choose baseline values to produce clear and readable dynamics:
+
+-   N = 100000
+
+-   I_init = 10
+
+-   beta = 0.18 per day (constant) or seasonal with base = 0.18, amp = 0.25, phase = 30 days
+
+-   gamma = 1/7 per day (mean infectious period 7 days)
+
+-   omega = 1/30 per day (mean immunity 30 days)
+
+-   alpha = 0.6 for reported cases, unless noted
+
+These values produce a peak that is neither too sharp nor too flat, allowing uncertainty to be visible without crowding the axes.
+
+## Mathematical model and discrete-time update
+
+The single-population SIRS model partitions a closed population of size N into S(t), I(t), and R(t). People move from S to I via infection, from I to R via recovery, and from R back to S as immunity wanes. In continuous time the rates are:
+
+-   Infection rate: beta(t) \* S \* I / N
+
+-   Recovery rate: gamma \* I
+
+-   Waning rate: omega \* R
+
+To run the model in daily time steps we use a rate-to-probability mapping. For a process with hazard h over a small step of length dt, the event probability in that interval is p = 1 - exp(-h \* dt). We apply this to each flow:
+
+-   p_inf(t) = 1 - exp(-beta(t) \* I(t) / N \* dt)
+
+-   p_rec = 1 - exp(-gamma \* dt)
+
+-   p_wane = 1 - exp(-omega \* dt)
+
+Deterministic updates use expected flows:
+
+-   new_inf = S(t) \* p_inf(t)
+
+-   new_rec = I(t) \* p_rec
+
+-   new_wane = R(t) \* p_wane
+
+We then update states:
+
+-   S(t+1) = S(t) - new_inf + new_wane
+
+-   I(t+1) = I(t) + new_inf - new_rec
+
+-   R(t+1) = R(t) + new_rec - new_wane
+
+Daily incidence is defined as new_inf.
+
+Stochastic updates replace expected flows with draws from appropriate binomial distributions to capture process noise:
+
+-   new_inf \~ Binomial(S(t), p_inf(t))
+
+-   new_rec \~ Binomial(I(t), p_rec)
+
+-   new_wane \~ Binomial(R(t), p_wane)
+
+The same state update equations then apply. This stochastic engine preserves mass balance by construction and naturally caps flows by the available compartment counts.
+
+## Seasonal transmission and intervention windows
+
+Seasonality is introduced by replacing beta with a time-varying beta(t). In this report we use a simple sinusoid:
+
+-   beta(t) = base \* (1 + amp \* sin(2pi(t - phase) / period)) Typical period is 365 days. The parameters control the mean level (base), the amplitude (amp between 0 and 1), and a phase shift measured in days. For policy scenarios we allow piecewise scaling windows:
+
+-   beta_adj(t) = beta(t) \* scale for t in \[t0, t1\] Multiple windows can be combined to represent a series of interventions.
+
+## Numerical choices and stability
+
+We use dt = 1 day because, for the parameter ranges in this report, the hazard-to-probability mapping keeps event probabilities in \[0, 1\] and the binomials remain well behaved. If users choose very large beta or dt values, p_inf can approach 1 and dynamics can become too abrupt. In practice, keeping beta\*I/N below roughly 1.5 per day avoids instability, and where needed we recommend sub-daily stepping with dt = 0.25 and four updates per day. The code supports this by treating dt as a parameter and scaling all hazards by dt.
+
+## Observation model and thinning to cases
+
+To connect model infections to reported cases, we apply an optional reporting probability alpha in (0, 1). For stochastic runs we thin the simulated incident infections:
+
+-   new_cases(t) \~ Binomial(new_inf(t), alpha) For deterministic runs we report alpha \* new_inf. This is a simple proxy. Real-world pipelines include delays, weekend effects, test positivity artifacts, and overdispersion. In future work we plan to add a delay distribution and a negative binomial observation model.
+
+## Multi-population structure and contact matrix
+
+For multiple groups we replicate the SIRS state per group g with population N_g. Cross-group infection is determined by a contact matrix C, where C\[g, h\] encodes the relative mixing between groups g and h. The force of infection experienced by group g becomes:
+
+-   lambda_g(t) = beta_g(t) \* sum_h C\[g, h\] \* I_h(t) / N_h The per-step infection probability for group g is p_inf_g = 1 - exp(-lambda_g(t) \* dt). This report uses a simple constant C with rows normalized so that each group experiences a comparable total contact rate. We keep beta_g equal across groups for clarity unless noted, and we show incidence per million to standardize for group size.
+
+## Algorithm sketch
+
+Deterministic loop:
+
+-   Initialize S, I, R; set dt and time horizon T.
+
+-   For t in 1..T:
+
+    -   Compute p_inf(t), p_rec, p_wane.
+
+    -   Compute expected flows new_inf, new_rec, new_wane.
+
+    -   Update S, I, R and record incidence.
+
+-   Return tidy output with time, S, I, R, and incidence.
+
+Stochastic loop:
+
+-   Initialize S, I, R and RNG seed; choose n_sims.
+
+-   For each simulation s:
+
+    -   Repeat the deterministic loop but draw flows from Binomial distributions.
+
+-   Aggregate across sims to compute median lines and quantile ribbons.
+
+## Validation and verification
+
+### Conservation checks
+
+The model is closed, so S + I + R must equal N at every step. We assert and log the maximum absolute deviation from N across the run. We also ensure no negative counts can appear; the binomial flow formulation enforces this by design.
+
+### Limiting cases
+
+-   Omega = 0 collapses SIRS to SIR. Our deterministic output matches the classic SIR trajectory with a single peak and monotonic R increase.
+
+-   Beta(t) constant and small yields near-linear growth that eventually dies out if beta \< gamma.
+
+-   Alpha = 1 implies reported cases equal true infections per day; alpha = 0 hides all infections.
+
+### Time step sensitivity
+
+We re-run selected scenarios with dt = 0.5 and dt = 0.25 days and compare:
+
+-   Peak timing difference in days
+
+-   Peak size difference as a percent
+
+-   L2 distance between I(t) curves
+
+For this report, differences are small and within plotting tolerance, indicating dt = 1 day is adequate.
+
+### Cross-check with analytic R0
+
+For constant beta and omega = 0 the basic reproduction number is R0 = beta / gamma. We verify that early growth in I(t) is approximately exponential with rate gamma\*(R0 - 1), consistent with the linearized model. We estimate the slope by regressing log I(t) over the first 10 to 14 days.
+
+## Figure generation workflow
+
+All publication-ready figures are produced from a single reproducible pipeline. A plotting script reads the simulation outputs, computes any derived measures (for example, daily incidence or per-million scaling), and saves PNGs to the plots/ folder with consistent styling and labels. The same script is used to regenerate figures from a clean checkout of the repository.
+
+## Reproducibility
+
+Reproducibility is ensured by: (i) fixed random seeds for stochastic runs, (ii) saving all generated figures to a known location (`plots/`), and (iii) keeping the exact simulation and plotting code under version control. R version and package versions are recorded and reported in Appendix C. All code listings referenced in this section are provided in the Appendices.
+
+\newpage
+
+# Results
+
+## Deterministic (constant beta)
+
+::: {#fig-det-sir .figure}
+```{r, echo=FALSE, eval=TRUE, out.width="85%"}
+knitr::include_graphics("plots/det_sir.png")
+```
+
+Deterministic SIRS with constant beta. Susceptible falls as Infectious rises and then declines; Recovered increases accordingly. The size and timing of the Infectious peak are driven by the initial susceptible pool and the ratio beta:gamma.
+:::
+
+::: {#fig-det-inc .figure}
+```{r, echo=FALSE, eval=TRUE, out.width="80%"}
+knitr::include_graphics("plots/det_incidence.png")
+```
+
+Daily incidence (new infections per day) derived from the deterministic run. Peak timing is marked and coincides with rapid susceptible depletion; incidence falls as the effective contact rate drops with smaller S.
+:::
+
+\newpage
+
+## Deterministic (seasonal Beta) → SIR
+
+::: {#fig-seasonal .figure}
+```{r, echo=FALSE, eval=TRUE, out.width="85%"}
+knitr::include_graphics("plots/seasonal_sir.png")
+```
+
+Seasonal forcing in beta(t) shifts both the timing and amplitude of I(t). Compared with the constant-beta baseline, infection waves are phase-shifted and slightly broadened, illustrating how transmission seasonality modulates outbreak dynamics.
+:::
+
+## Stochastic (single-pop) → I(t) ribbon + cases ribbon
+
+::: {#fig-stoch-i .figure}
+```{r, echo=FALSE, eval=TRUE, out.width="80%"}
+knitr::include_graphics("plots/stoch_sir.png")
+```
+
+Stochastic ensemble of I(t): the solid line is the median across 200 runs; the ribbon shows the 95% interval. Uncertainty widens near the peak where random differences in early transmission accumulate most.
+:::
+
+::: {#fig-stoch-inc .figure}
+```{r, echo=FALSE, eval=TRUE, out.width="85%"}
+knitr::include_graphics("plots/stoch_incidence.png")
+```
+
+Daily reported cases (if alpha thinning is used) with a 95% ribbon. The median trajectory resembles the deterministic incidence shape, but the ribbon quantifies variability that a single deterministic path cannot show.
+:::
+
+\newpage
+
+## Deterministic vs stochastic — incidence overlay
+
+::: {#fig-det-vs-stoch .figure}
+```{r, echo=FALSE, eval=TRUE, out.width="60%"}
+knitr::include_graphics("plots/incidence_det_vs_stoch.png")
+```
+
+Deterministic vs stochastic incidence. The blue curve is the deterministic trajectory. The black curve is the stochastic median across runs, and the grey ribbon shows the central 35–65% interval. Parameters are identical across models; differences reflect process noise only—not changes in beta, gamma, or omega.
+:::
+
+\newpage
+
+## Multi-population (deterministic) → S combined, I faceted, incidence per million
+
+::: {#fig-multi-s .figure}
+```{r, echo=FALSE, eval=TRUE, out.width="80%"}
+knitr::include_graphics("plots/multi_S_combined.png")
+```
+
+Susceptible proportion for each group on a common axis. Larger groups can decline more gradually in proportion terms under identical transmission; timing differences also reflect initial I and scale.
+:::
+
+::: {#fig-multi-i .figure}
+```{r, echo=FALSE, eval=TRUE, out.width="85%"}
+knitr::include_graphics("plots/multi_incidence_combined.png")
+```
+
+Incidence per million standardises for population size and enables direct cross-group comparison. Peak burden is highest where initial seeding or effective contact rate is larger; per-million scaling reveals relative impact rather than raw totals.
+:::
+
+\newpage
+
+## Summarized tidy results {#tbl-sample-summary}
+
+```{r,eval=TRUE}
+#| label: tbl-sample-summary
+#| tbl-cap: "Summary across simulations: median and IQR by time, group, and state (first 10 rows)."
+
+library(readr) 
+library(dplyr) 
+library(knitr)
+
+df <- read_csv("plots/stochC_tidy_sample.csv", show_col_types = FALSE)
+
+# Ensure expected columns exist; gracefully handle deterministic runs (no 'sim')
+
+if (!"sim" %in% names(df)) df <- mutate(df, sim = NA_integer_)
+if (!"group" %in% names(df)) df <- mutate(df, group = 1L)
+
+group_cols <- c("time", "group", "state")
+
+summary_tbl <- df %>%
+group_by(across(all_of(group_cols))) %>%
+summarise(
+n_sims = n_distinct(sim, na.rm = TRUE),
+med = median(value, na.rm = TRUE),
+p25 = quantile(value, 0.25, na.rm = TRUE),
+p75 = quantile(value, 0.75, na.rm = TRUE),
+.groups = "drop"
+) %>%
+arrange(time, group, state) %>%
+slice_head(n = 10)
+
+kable(
+summary_tbl,
+digits = 4
+)
+```
+
+### Figure guide and cross-references (what to look for)
+
+This short guide links each figure to the key takeaway so readers know exactly what they are seeing and how to read it.
+
+-   **Deterministic S, I, R** — see @fig-det-sir\
+    Baseline SIRS without seasonality. Infectious rises when beta \* S / N \> gamma and falls once susceptibles deplete past the threshold S/N = gamma / beta. Use it to anchor mechanism and peak formation.
+
+-   **Deterministic incidence** — see @fig-det-inc\
+    Daily new infections implied by the deterministic run. Peak timing matches the turning point of I(t). Use this to talk about calendar dates and operational triggers.
+
+-   **Seasonal S, I, R** — see @fig-seasonal\
+    Same model with beta(t) forced seasonally. Peaks shift in date and height. Use it to explain why waves can move in the calendar without behavior change.
+
+-   **Stochastic I(t) ribbon** — see @fig-stoch-i\
+    Median line with a 95% band across many simulations. The band widens near the peak where early randomness compounds. Use it to discuss uncertainty around load and timing.\
+    *(Concrete values: Table @tbl-sample-summary, rows 1–3 and 5–9 for group 1 show I med increasing from 0.005 to 0.007 while S med falls from 0.995 to 0.993, with p25–p75 roughly 0.005–0.008.)*
+
+-   **Stochastic cases ribbon** — see @fig-stoch-inc\
+    R
