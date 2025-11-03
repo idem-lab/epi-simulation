@@ -11,6 +11,7 @@ format:
     output-file: ETC5543-Report_Christy.html
     toc: true
     code-fold: true
+    embed-resources: true
     code-links:
       - text: GitHub/epi-simulation
         icon: github
