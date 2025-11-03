@@ -141,7 +141,7 @@ plot_sirs <- function(
         y = incidence / max_inc
       ),
       linewidth = 1,
-      colour = "grey20"
+      colour = "grey40"
     ) +
     ggplot2::scale_colour_manual(values = state_cols, name = NULL) +
     ggplot2::scale_y_continuous(
