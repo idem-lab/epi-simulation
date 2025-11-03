@@ -1,3 +1,90 @@
+#' @title Plot SIR trajectories and incidence for a single-population simulation
+#'
+#' @description
+#' Quick visual diagnostics for a single-population SIR / SIRS simulation.
+#' Supports four display modes:
+#'
+#' - `"sir"`: plot S, I, R proportions over time.
+#' - `"incidence"`: plot daily new infections.
+#' - `"both_side"`: show `"sir"` and `"incidence"` side by side.
+#' - `"overlay"`: draw S, I, R on the left y-axis (proportion in [0,1])
+#'   and incidence on a secondary right y-axis.
+#'
+#' Incidence can optionally be normalised to "per 1e6 people" using
+#' `per_million = TRUE`. In that case, the function will look for a total
+#' population size in `sim$params$pop`. If `per_million = TRUE` but
+#' `sim$params$pop` is missing or invalid (not a single positive number),
+#' the function stops with an error.
+#'
+#' @param sim A simulation result list for a **single population**. It must
+#'   contain numeric vectors (all the same length):
+#'   \itemize{
+#'     \item `time`       — time steps (e.g. days)
+#'     \item `S`, `I`, `R` — proportions susceptible / infectious / recovered
+#'     \item `incidence`  — daily new infections (counts per day)
+#'   }
+#'   Optionally, `sim$params$pop` may store the total population size
+#'   (scalar > 0). This is only used if `per_million = TRUE`.
+#'
+#' @param which Character string selecting the view to return.
+#'   One of `c("both_side","overlay","sir","incidence")`:
+#'   \itemize{
+#'     \item `"sir"`        — S/I/R proportions only
+#'     \item `"incidence"`  — incidence only
+#'     \item `"both_side"`  — a side-by-side layout of the above two panels
+#'     \item `"overlay"`    — S/I/R plus incidence on a second y-axis
+#'   }
+#'
+#' @param per_million Logical (default `FALSE`). If `TRUE`, `incidence`
+#'   is converted from raw counts to cases per 1,000,000 people using
+#'   \eqn{ incidence / pop * 1e6 }, where `pop` is taken from
+#'   `sim$params$pop`. The y-axis label is updated to `"new infections"`.
+#'   If `FALSE`, raw counts are plotted and the y-axis label is
+#'   `"new infections (count)"`.
+#'
+#' @return
+#' A `ggplot` object (for `"sir"`, `"incidence"`, `"overlay"`) or a
+#' patchwork object (for `"both_side"`). This means you can assign it,
+#' print it later, or save it with `ggplot2::ggsave()`.
+#'
+#' @examples
+#' # Fake example data
+#' t <- 1:60
+#' S <- pmax(0, 1 - 0.6*(1 - exp(-t/40)))
+#' I <- pmax(0, 0.15*exp(-(t-25)^2/200))
+#' R <- pmax(0, 1 - S - I)
+#' inc <- pmax(0, round(diff(c(0, I))*2000))
+#'
+#' simA <- list(
+#'   time = t,
+#'   S = S,
+#'   I = I,
+#'   R = R,
+#'   incidence = inc,
+#'   params = list(pop = 80000) # total population (optional but needed for per_million=TRUE)
+#' )
+#'
+#' # Just proportions
+#' p1 <- plot_sirs(simA, which = "sir")
+#'
+#' # Incidence in raw counts
+#' p2 <- plot_sirs(simA, which = "incidence")
+#'
+#' # Incidence normalised per 1e6 population
+#' p3 <- plot_sirs(simA, which = "incidence", per_million = TRUE)
+#'
+#' # Side-by-side (SIR + incidence)
+#' p4 <- plot_sirs(simA, which = "both_side")
+#'
+#' # Overlay with dual y-axes
+#' p5 <- plot_sirs(simA, which = "overlay")
+#'
+#' # Then you can print or save:
+#' # print(p4)
+#' # ggplot2::ggsave("diagnostics.png", p4, width = 8, height = 4, dpi = 300)
+#'
+#' @export
+
 plot_sirs <- function(
     sim,
     which = c("both_side","overlay","sir","incidence"),
